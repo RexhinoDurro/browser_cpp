@@ -1,0 +1,32 @@
+# QuickJS build artifacts
+third_party/quickjs/*.o
+third_party/quickjs/*.a
+third_party/quickjs/qjs.exe
+third_party/quickjs/qjsc.exe
+third_party/quickjs/run-test262.exe
+third_party/quickjs/hello.c
+third_party/quickjs/test_fib.c
+third_party/quickjs/repl.c
+third_party/quickjs/.obj/
+third_party/quickjs/examples/
+
+# Other build artifacts
+build/
+*.o
+*.a
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.user
+*.sln.docstates
+
+# CMake build directories
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
