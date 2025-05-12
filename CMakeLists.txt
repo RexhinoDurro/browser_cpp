@@ -14,12 +14,13 @@ set_target_properties(quickjs PROPERTIES
 
 # Define your browser source files
 set(BROWSER_SOURCES
-    src/main.cpp
     src/html/dom_tree.cpp
     src/html/html_parser.cpp
     src/css/css_parser.cpp
     src/css/style_resolver.cpp
-    # Add other existing source files
+    src/layout/box_model.cpp
+    src/layout/layout_engine.cpp
+    src/rendering/renderer.cpp
 )
 
 # Add JavaScript engine sources
