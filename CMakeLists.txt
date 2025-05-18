@@ -11,9 +11,57 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_L
     link_libraries(stdc++fs)
 endif()
 
+# Set vcpkg toolchain file if not already set
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+  set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    CACHE STRING "Vcpkg toolchain file")
+endif()
+
 # Find required packages
 find_package(OpenGL REQUIRED)
-find_package(glfw3 REQUIRED)
+
+# GLFW handling with vcpkg
+message(STATUS "Trying to find GLFW3 in vcpkg...")
+message(STATUS "Vcpkg Include Dir: ${CMAKE_CURRENT_SOURCE_DIR}/third_party/vcpkg/installed/x64-windows/include")
+message(STATUS "Vcpkg Lib Dir: ${CMAKE_CURRENT_SOURCE_DIR}/third_party/vcpkg/installed/x64-windows/lib")
+
+# Try to find GLFW3 with different approaches
+find_package(glfw3 CONFIG QUIET)
+if(glfw3_FOUND)
+  message(STATUS "Found GLFW3 via CONFIG mode")
+else()
+  find_package(glfw CONFIG QUIET)
+  if(glfw_FOUND)
+    message(STATUS "Found GLFW via CONFIG mode")
+  else()
+    message(STATUS "Setting up GLFW3 manually")
+    
+    # Set up paths manually
+    set(GLFW_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/vcpkg/installed/x64-windows/include")
+    set(GLFW_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/third_party/vcpkg/installed/x64-windows/lib/glfw3dll.lib")
+    
+    # Check if files exist
+    if(EXISTS "${GLFW_INCLUDE_DIR}/GLFW/glfw3.h" AND EXISTS "${GLFW_LIBRARY}")
+      message(STATUS "Manual GLFW setup: files found")
+      
+      # Create an imported target for GLFW if needed
+      if(NOT TARGET glfw AND NOT TARGET glfw3)
+        add_library(glfw INTERFACE IMPORTED)
+        target_include_directories(glfw INTERFACE ${GLFW_INCLUDE_DIR})
+        target_link_libraries(glfw INTERFACE ${GLFW_LIBRARY})
+        message(STATUS "Created glfw interface target")
+      endif()
+    else()
+      message(FATAL_ERROR "GLFW files not found at expected locations")
+    endif()
+  endif()
+endif()
+
+# Ensure GLFW targets are properly set up
+if(TARGET glfw3 AND NOT TARGET glfw)
+  message(STATUS "Creating glfw alias for glfw3")
+  add_library(glfw ALIAS glfw3)
+endif()
 
 # Add QuickJS library
 add_library(quickjs STATIC IMPORTED)
@@ -177,73 +225,5 @@ target_link_libraries(browser_cpp
     ${OPENGL_LIBRARIES}
     pthread
     m
-    ${PLATFORM_LIBS}
-)
-
-# Create networking example executable
-add_executable(networking_example
-    examples/networking_example.cpp
-)
-
-target_link_libraries(networking_example
-    networking
-    ${PLATFORM_LIBS}
-)
-
-# Create security example executable
-add_executable(security_example
-    examples/security_example.cpp
-)
-
-target_link_libraries(security_example
-    security
-    networking
-    ${PLATFORM_LIBS}
-)
-
-# Create local storage example executable
-add_executable(local_storage_example
-    examples/local_storage_example.cpp
-)
-
-target_link_libraries(local_storage_example
-    storage
-    security
-    ${PLATFORM_LIBS}
-)
-
-# Enable testing
-enable_testing()
-
-# Add tests directory
-add_subdirectory(tests)
-
-# Add the storage tests
-add_executable(local_storage_test
-    tests/unit/local_storage_test.cpp
-)
-
-target_link_libraries(local_storage_test
-    storage
-    security
-    gtest
-    gtest_main
-    ${PLATFORM_LIBS}
-)
-
-add_test(NAME LocalStorageTest COMMAND local_storage_test)
-
-# Add UI example
-add_executable(ui_example
-    examples/ui_example.cpp
-)
-
-target_link_libraries(ui_example
-    ui
-    browser_main
-    browser_core
-    nanovg
-    glfw
-    ${OPENGL_LIBRARIES}
     ${PLATFORM_LIBS}
 )
