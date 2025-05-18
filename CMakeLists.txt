@@ -26,6 +26,7 @@ set(BROWSER_SOURCES
     src/layout/box_model.cpp
     src/layout/layout_engine.cpp
     src/rendering/renderer.cpp
+    src/rendering/paint_system.cpp
 )
 
 # Add JavaScript engine sources
@@ -39,6 +40,23 @@ set(NETWORKING_SOURCES
     src/networking/http_client.cpp
     src/networking/dns_resolver.cpp
     src/networking/cache.cpp
+    src/networking/resource_loader.h
+)
+
+# Add security sources
+set(SECURITY_SOURCES
+    src/security/same_origin.cpp
+    src/security/content_security_policy.cpp
+    src/security/certificate_validator.cpp
+    src/security/xss_protection.cpp
+    src/security/csrf_protection.cpp
+    src/security/cookie_security.cpp
+    src/security/security_manager.cpp
+)
+
+# Add browser core
+set(BROWSER_CORE_SOURCES
+    src/browser/browser.cpp
 )
 
 # Create browser library
@@ -54,6 +72,16 @@ add_library(js_engine STATIC
 # Create networking library
 add_library(networking STATIC
     ${NETWORKING_SOURCES}
+)
+
+# Create security library
+add_library(security STATIC
+    ${SECURITY_SOURCES}
+)
+
+# Create browser main library
+add_library(browser_main STATIC
+    ${BROWSER_CORE_SOURCES}
 )
 
 # Platform-specific libraries
@@ -73,15 +101,28 @@ target_link_libraries(networking
     ${PLATFORM_LIBS}
 )
 
+target_link_libraries(security
+    networking
+)
+
+target_link_libraries(browser_main
+    browser_core
+    js_engine
+    networking
+    security
+)
+
 # Create main executable
 add_executable(browser_cpp
     src/main.cpp
 )
 
 target_link_libraries(browser_cpp
+    browser_main
     browser_core
     js_engine
     networking
+    security
     quickjs
     pthread
     m
@@ -94,6 +135,17 @@ add_executable(networking_example
 )
 
 target_link_libraries(networking_example
+    networking
+    ${PLATFORM_LIBS}
+)
+
+# Create security example executable
+add_executable(security_example
+    examples/security_example.cpp
+)
+
+target_link_libraries(security_example
+    security
     networking
     ${PLATFORM_LIBS}
 )
