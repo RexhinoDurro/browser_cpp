@@ -31,8 +31,8 @@ public:
     layout::LayoutEngine* layoutEngine() { return &m_layoutEngine; }
     rendering::Renderer* renderer() { return &m_renderer; }
     javascript::JSEngine* jsEngine() { return &m_jsEngine; }
-    networking::ResourceLoader* resourceLoader() { return &m_resourceLoader.get(); }
-    security::SecurityManager* securityManager() { return &m_securityManager.get(); }
+    networking::ResourceLoader* resourceLoader() { return m_resourceLoader.get(); }
+    security::SecurityManager* securityManager() { return m_securityManager.get(); }
     
     // Get current document
     html::Document* currentDocument() const { return m_domTree.document(); }
@@ -41,7 +41,7 @@ public:
     std::shared_ptr<layout::Box> layoutRoot() const { return m_layoutEngine.layoutRoot(); }
     
     // Render current page to ASCII art (for terminal viewing)
-    std::string renderToASCII(int width, int height) const;
+    std::string renderToASCII(int width, int height);
     
 private:
     // Browser components

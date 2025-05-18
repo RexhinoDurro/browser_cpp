@@ -265,9 +265,11 @@ std::vector<Cookie> CookieJar::getCookies(const std::string& domain, const std::
     
     // Get all cookies that apply to the domain and path
     for (const auto& domainEntry : m_cookies) {
-        if (domainEntry.first.empty() || Cookie().setDomain(domainEntry.first).appliesTo(domain)) {
+        Cookie tempCookie;
+        if (domainEntry.first.empty() || (tempCookie.setDomain(domainEntry.first), tempCookie.appliesTo(domain))) {
             for (const auto& pathEntry : domainEntry.second) {
-                if (Cookie().setPath(pathEntry.first).appliesToPath(path)) {
+                Cookie pathCookie;
+                if ((pathCookie.setDomain(domainEntry.first), pathCookie.setPath(pathEntry.first), pathCookie.appliesToPath(path))) {
                     for (const auto& nameEntry : pathEntry.second) {
                         const Cookie& cookie = nameEntry.second;
                         

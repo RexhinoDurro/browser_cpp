@@ -123,7 +123,7 @@ bool Browser::loadUrl(const std::string& url, std::string& error) {
     return true;
 }
 
-std::string Browser::renderToASCII(int width, int height) const {
+std::string Browser::renderToASCII(int width, int height) {
     // Get the layout tree root
     std::shared_ptr<layout::Box> layoutRoot = m_layoutEngine.layoutRoot();
     
