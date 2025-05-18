@@ -129,7 +129,8 @@ std::string XssProtection::sanitizeHtml(const std::string& html, SanitizationLev
     
     if (level == SanitizationLevel::BASIC) {
         // Remove script tags and event handlers
-        std::regex scriptTagRegex("<script[^>]*>.*?</script>", std::regex::icase | std::regex::dotall);
+        // Fix: removed dotall flag, use [\\s\\S]* which matches all characters including newlines
+        std::regex scriptTagRegex("<script[^>]*>[\\s\\S]*?</script>", std::regex::icase);
         sanitized = std::regex_replace(sanitized, scriptTagRegex, "");
         
         // Remove javascript: URLs
@@ -147,52 +148,64 @@ std::string XssProtection::sanitizeHtml(const std::string& html, SanitizationLev
         
         // Replace all tags with stripped versions
         std::regex tagRegex("<([^>]+)>");
-        sanitized = std::regex_replace(sanitized, tagRegex, [this](const std::smatch& match) {
+        std::string result;
+        std::string::const_iterator searchStart(sanitized.cbegin());
+        std::sregex_iterator iter(sanitized.begin(), sanitized.end(), tagRegex);
+        std::sregex_iterator end;
+        size_t lastPos = 0;
+        for (; iter != end; ++iter) {
+            const std::smatch& match = *iter;
+            result.append(sanitized, lastPos, match.position() - lastPos);
+
             std::string tag = match[1].str();
-            
+
             // Get tag name
             size_t spacePos = tag.find_first_of(" \t\n\r\f\v");
             std::string tagName = spacePos != std::string::npos ? tag.substr(0, spacePos) : tag;
-            
+
             // Check if closing tag
             bool isClosingTag = false;
             if (!tagName.empty() && tagName[0] == '/') {
                 isClosingTag = true;
                 tagName = tagName.substr(1);
             }
-            
+
             // Convert to lowercase
             std::transform(tagName.begin(), tagName.end(), tagName.begin(),
                            [](unsigned char c) { return std::tolower(c); });
-            
+
             // Check if allowed
             if (!isAllowedTag(tagName)) {
-                return "";
+                // skip this tag
+                lastPos = match.position() + match.length();
+                continue;
             }
-            
+
             // If closing tag, just return it
             if (isClosingTag) {
-                return "</" + tagName + ">";
+                result += "</" + tagName + ">";
+                lastPos = match.position() + match.length();
+                continue;
             }
-            
+
             // Parse attributes
-            std::string result = "<" + tagName;
-            
+            std::string tagResult = "<" + tagName;
+
             if (spacePos != std::string::npos) {
                 std::string attrStr = tag.substr(spacePos + 1);
                 std::regex attrRegex("([a-zA-Z0-9_-]+)\\s*=\\s*[\"']([^\"']*)[\"']");
-                
-                std::string::const_iterator searchStart(attrStr.begin());
+
+                std::string::const_iterator attrSearchStart(attrStr.begin());
                 std::smatch attrMatch;
-                
-                while (std::regex_search(searchStart, attrStr.end(), attrMatch, attrRegex)) {
+
+                while (std::regex_search(attrSearchStart, attrStr.cend(), attrMatch, attrRegex)) {
                     std::string attrName = attrMatch[1].str();
                     std::string attrValue = attrMatch[2].str();
-                    
+
                     // Convert to lowercase
                     std::transform(attrName.begin(), attrName.end(), attrName.begin(),
                                    [](unsigned char c) { return std::tolower(c); });
-                    
+
                     // Check if allowed
                     if (isAllowedAttribute(tagName, attrName)) {
                         // Check for URL attributes
@@ -201,28 +214,31 @@ std::string XssProtection::sanitizeHtml(const std::string& html, SanitizationLev
                             size_t colonPos = attrValue.find(':');
                             if (colonPos != std::string::npos) {
                                 std::string protocol = attrValue.substr(0, colonPos);
-                                
+
                                 // Convert to lowercase
                                 std::transform(protocol.begin(), protocol.end(), protocol.begin(),
                                                [](unsigned char c) { return std::tolower(c); });
-                                
+
                                 if (!isAllowedProtocol(protocol)) {
-                                    // Skip this attribute
-                                    searchStart = attrMatch[0].second;
+                                    attrSearchStart = attrMatch[0].second;
                                     continue;
                                 }
                             }
                         }
-                        
-                        result += " " + attrName + "=\"" + attrValue + "\"";
+
+                        tagResult += " " + attrName + "=\"" + attrValue + "\"";
                     }
-                    
-                    searchStart = attrMatch[0].second;
+
+                    attrSearchStart = attrMatch[0].second;
                 }
             }
-            
-            return result + ">";
-        });
+
+            tagResult += ">";
+            result += tagResult;
+            lastPos = match.position() + match.length();
+        }
+        result.append(sanitized, lastPos, sanitized.length() - lastPos);
+        sanitized = result;
     }
     
     return sanitized;
@@ -354,6 +370,7 @@ bool XssProtection::detectXssPatterns(const std::string& content) const {
     }
     
     // Check for more complex patterns with regex
+    // Fix: Use explicit regex::icase flag only, removed dotall
     std::vector<std::regex> xssRegexPatterns = {
         std::regex("<\\s*script[^>]*>[\\s\\S]*?<\\s*/\\s*script\\s*>", std::regex::icase),
         std::regex("<\\s*iframe[^>]*>[\\s\\S]*?<\\s*/\\s*iframe\\s*>", std::regex::icase),
@@ -364,6 +381,7 @@ bool XssProtection::detectXssPatterns(const std::string& content) const {
     };
     
     for (const auto& regex : xssRegexPatterns) {
+        // Fix: Use proper regex_search with content as string
         if (std::regex_search(content, regex)) {
             return true;
         }

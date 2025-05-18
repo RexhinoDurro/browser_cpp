@@ -178,6 +178,13 @@ public:
     PaintContext();
     ~PaintContext();
     
+    // Disallow copying
+    PaintContext(const PaintContext&) = delete;
+    PaintContext& operator=(const PaintContext&) = delete;
+
+    // Allow moving
+    PaintContext(PaintContext&&) = default;
+    PaintContext& operator=(PaintContext&&) = default;
     // Get the display list
     DisplayList& displayList() { return m_displayList; }
     

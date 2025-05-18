@@ -362,6 +362,7 @@ void PaintSystem::paintBox(layout::Box* box, PaintContext& context) {
     
     // Paint children
     for (const auto& child : box->children()) {
+        // FIX: Use paintBox by reference instead of creating a copy
         paintBox(child.get(), context);
     }
     
