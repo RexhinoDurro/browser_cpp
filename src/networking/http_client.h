@@ -6,6 +6,34 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <cstdint> // For uint8_t
+
+// Forward declare addrinfo struct to avoid redefinition issues
+#ifdef _WIN32
+struct addrinfo;
+#else
+struct addrinfo;
+#endif
+
+// Platform-specific includes
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+typedef SOCKET socket_t;
+#define INVALID_SOCKET (SOCKET)(~0)
+#define SOCKET_ERROR (-1)
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
+typedef int socket_t;
+#define INVALID_SOCKET (-1)
+#define SOCKET_ERROR (-1)
+#define closesocket close
+#endif
 
 namespace browser {
 namespace networking {
@@ -16,7 +44,7 @@ enum class HttpMethod {
     POST,
     HEAD,
     PUT,
-    DELETE,
+    DELETE_,
     OPTIONS
 };
 
@@ -137,7 +165,7 @@ private:
     void closeConnection();
     
     // Connection socket
-    int m_socket;
+    socket_t m_socket;
     
     // Configuration
     int m_timeoutSeconds;
@@ -155,6 +183,9 @@ private:
     bool m_useSSL;
     void* m_sslContext;  // Opaque pointer to SSL context
 };
+
+// Helper function for case-insensitive string comparison
+int strcasecmp(const char* s1, const char* s2);
 
 } // namespace networking
 } // namespace browser

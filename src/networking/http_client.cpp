@@ -5,32 +5,21 @@
 #include <algorithm>
 #include <cctype>
 
-// Platform-specific includes
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
-typedef SOCKET socket_t;
-#define INVALID_SOCKET (SOCKET)(~0)
-#define SOCKET_ERROR (-1)
-#else
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <unistd.h>
-typedef int socket_t;
-#define INVALID_SOCKET (-1)
-#define SOCKET_ERROR (-1)
-#endif
-
-// Define closesocket for Unix systems
-#ifndef _WIN32
-#define closesocket close
-#endif
-
 namespace browser {
 namespace networking {
+
+//-----------------------------------------------------------------------------
+// Helper Functions
+//-----------------------------------------------------------------------------
+
+// Case-insensitive string comparison
+int strcasecmp(const char* s1, const char* s2) {
+    #ifdef _WIN32
+    return _stricmp(s1, s2);
+    #else
+    return ::strcasecmp(s1, s2);
+    #endif
+}
 
 //-----------------------------------------------------------------------------
 // HttpResponse Implementation
@@ -429,22 +418,23 @@ void HttpClient::postAsync(const std::string& url, const std::string& body,
 
 void HttpClient::processPendingRequests() {
     // Process one pending request
-    for (auto& asyncRequest : m_pendingRequests) {
-        if (!asyncRequest.inProgress) {
-            asyncRequest.inProgress = true;
-            
-            // Process the request
-            std::string error;
-            HttpResponse response = sendRequest(asyncRequest.request, error);
-            
-            // Call the callback
-            asyncRequest.callback(response, error);
-            
-            // Remove the request
-            asyncRequest = m_pendingRequests.back();
-            m_pendingRequests.pop_back();
-            break;
-        }
+    if (m_pendingRequests.empty()) {
+        return;
+    }
+    
+    AsyncRequest& asyncRequest = m_pendingRequests.front();
+    if (!asyncRequest.inProgress) {
+        asyncRequest.inProgress = true;
+        
+        // Process the request
+        std::string error;
+        HttpResponse response = sendRequest(asyncRequest.request, error);
+        
+        // Call the callback
+        asyncRequest.callback(response, error);
+        
+        // Remove the request
+        m_pendingRequests.erase(m_pendingRequests.begin());
     }
 }
 
@@ -491,7 +481,7 @@ HttpResponse HttpClient::sendRequestInternal(const HttpRequest& request, int red
         case HttpMethod::PUT:
             requestStream << "PUT ";
             break;
-        case HttpMethod::DELETE:
+        case HttpMethod::DELETE_:
             requestStream << "DELETE ";
             break;
         case HttpMethod::OPTIONS:
@@ -616,7 +606,8 @@ bool HttpClient::openConnection(const std::string& host, int port, std::string& 
     #endif
     
     // Resolve host name
-    struct addrinfo hints = {0}, *result = nullptr;
+    struct addrinfo hints = {0};
+    struct addrinfo* result = nullptr;
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
@@ -705,17 +696,6 @@ void HttpClient::closeConnection() {
         closesocket(m_socket);
         m_socket = INVALID_SOCKET;
     }
-}
-
-namespace {
-// Helper for case-insensitive string comparison
-int strcasecmp(const char* s1, const char* s2) {
-    #ifdef _WIN32
-    return _stricmp(s1, s2);
-    #else
-    return ::strcasecmp(s1, s2);
-    #endif
-}
 }
 
 } // namespace networking
