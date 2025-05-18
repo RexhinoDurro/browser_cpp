@@ -1,9 +1,4 @@
-# Add storage sources for the browser
-set(STORAGE_SOURCES
-    src/storage/local_storage.cpp
-)
-
-# Update main CMakeLists.txt to include the storage components
+# Update main CMakeLists.txt to include the UI components
 cmake_minimum_required(VERSION 3.10)
 project(browser_cpp)
 
@@ -16,12 +11,24 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_L
     link_libraries(stdc++fs)
 endif()
 
+# Find required packages
+find_package(OpenGL REQUIRED)
+find_package(glfw3 REQUIRED)
+
 # Add QuickJS library
 add_library(quickjs STATIC IMPORTED)
 set_target_properties(quickjs PROPERTIES
     IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/third_party/quickjs/libquickjs.a"
     INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/third_party/quickjs"
 )
+
+# Add NanoVG library
+set(NANOVG_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/nanovg")
+include_directories(${NANOVG_SOURCE_DIR}/src)
+add_library(nanovg STATIC
+    ${NANOVG_SOURCE_DIR}/src/nanovg.c
+)
+target_link_libraries(nanovg ${OPENGL_LIBRARIES})
 
 # Define your browser source files
 set(BROWSER_SOURCES
@@ -65,6 +72,12 @@ set(STORAGE_SOURCES
     src/storage/local_storage.cpp
 )
 
+# Add UI sources
+set(UI_SOURCES
+    src/ui/window.cpp
+    src/ui/controls.cpp
+)
+
 # Add browser core
 set(BROWSER_CORE_SOURCES
     src/browser/browser.cpp
@@ -93,6 +106,11 @@ add_library(security STATIC
 # Create storage library
 add_library(storage STATIC
     ${STORAGE_SOURCES}
+)
+
+# Create UI library
+add_library(ui STATIC
+    ${UI_SOURCES}
 )
 
 # Create browser main library
@@ -125,6 +143,13 @@ target_link_libraries(storage
     security
 )
 
+target_link_libraries(ui
+    browser_main
+    nanovg
+    glfw
+    ${OPENGL_LIBRARIES}
+)
+
 target_link_libraries(browser_main
     browser_core
     js_engine
@@ -145,7 +170,11 @@ target_link_libraries(browser_cpp
     networking
     security
     storage
+    ui
     quickjs
+    nanovg
+    glfw
+    ${OPENGL_LIBRARIES}
     pthread
     m
     ${PLATFORM_LIBS}
@@ -185,7 +214,6 @@ target_link_libraries(local_storage_example
 
 # Enable testing
 enable_testing()
-enable_testing()
 
 # Add tests directory
 add_subdirectory(tests)
@@ -204,3 +232,18 @@ target_link_libraries(local_storage_test
 )
 
 add_test(NAME LocalStorageTest COMMAND local_storage_test)
+
+# Add UI example
+add_executable(ui_example
+    examples/ui_example.cpp
+)
+
+target_link_libraries(ui_example
+    ui
+    browser_main
+    browser_core
+    nanovg
+    glfw
+    ${OPENGL_LIBRARIES}
+    ${PLATFORM_LIBS}
+)

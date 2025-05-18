@@ -1,15 +1,30 @@
 #include "browser/browser.h"
+#include "ui/window.h"
+#include "ui/controls.h"
 #include <iostream>
 #include <string>
-#include <chrono>
-#include <thread>
+#include <memory>
 
 int main(int argc, char* argv[]) {
-    // Create and initialize browser
-    browser::Browser browser;
+    // Create and initialize browser window
+    browser::ui::WindowConfig config;
+    config.title = "Simple Browser";
+    config.width = 1024;
+    config.height = 768;
+    config.maximized = true;
     
-    if (!browser.initialize()) {
-        std::cerr << "Failed to initialize browser" << std::endl;
+    auto window = std::make_shared<browser::ui::BrowserWindow>(config);
+    
+    if (!window->initialize()) {
+        std::cerr << "Failed to initialize browser window" << std::endl;
+        return 1;
+    }
+    
+    // Create and initialize browser controls
+    auto controls = std::make_shared<browser::ui::BrowserControls>(window.get());
+    
+    if (!controls->initialize()) {
+        std::cerr << "Failed to initialize browser controls" << std::endl;
         return 1;
     }
     
@@ -21,24 +36,35 @@ int main(int argc, char* argv[]) {
         url = argv[1];
     }
     
-    // Additional security settings if needed
-    browser.securityManager()->xssProtection()->setMode(browser::security::XssProtectionMode::ENABLED);
-    browser.securityManager()->csrfProtection()->setMode(browser::security::CsrfProtectionMode::SAME_ORIGIN);
+    // Set URL in address bar
+    controls->setAddressBarText(url);
     
-    // Load the URL
-    std::string error;
-    if (!browser.loadUrl(url, error)) {
-        std::cerr << "Failed to load URL: " << error << std::endl;
-        return 1;
+    // Show browser window
+    window->show();
+    
+    // Set up window callbacks
+    window->setUrlChangeCallback([&controls](const std::string& url) {
+        controls->setAddressBarText(url);
+    });
+    
+    window->setLoadingStateCallback([&controls](bool loading) {
+        controls->setLoading(loading);
+    });
+    
+    // Load initial URL
+    window->loadUrl(url);
+    
+    // Main event loop
+    while (window->isOpen()) {
+        // Process window events
+        window->processEvents();
+        
+        // Draw browser controls
+        controls->draw();
+        
+        // Limit frame rate (approx. 60 FPS)
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
-    
-    // Render the page to ASCII
-    std::cout << "\nASCII Rendering:" << std::endl;
-    std::cout << browser.renderToASCII(80, 30) << std::endl;
-    
-    // In a real browser, we would enter an event loop here
-    std::cout << "Page loaded successfully. Press Enter to exit." << std::endl;
-    std::cin.get();
     
     return 0;
 }
