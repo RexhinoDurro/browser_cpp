@@ -1,3 +1,9 @@
+# Add storage sources for the browser
+set(STORAGE_SOURCES
+    src/storage/local_storage.cpp
+)
+
+# Update main CMakeLists.txt to include the storage components
 cmake_minimum_required(VERSION 3.10)
 project(browser_cpp)
 
@@ -54,6 +60,11 @@ set(SECURITY_SOURCES
     src/security/security_manager.cpp
 )
 
+# Add storage sources
+set(STORAGE_SOURCES
+    src/storage/local_storage.cpp
+)
+
 # Add browser core
 set(BROWSER_CORE_SOURCES
     src/browser/browser.cpp
@@ -77,6 +88,11 @@ add_library(networking STATIC
 # Create security library
 add_library(security STATIC
     ${SECURITY_SOURCES}
+)
+
+# Create storage library
+add_library(storage STATIC
+    ${STORAGE_SOURCES}
 )
 
 # Create browser main library
@@ -105,11 +121,16 @@ target_link_libraries(security
     networking
 )
 
+target_link_libraries(storage
+    security
+)
+
 target_link_libraries(browser_main
     browser_core
     js_engine
     networking
     security
+    storage
 )
 
 # Create main executable
@@ -123,6 +144,7 @@ target_link_libraries(browser_cpp
     js_engine
     networking
     security
+    storage
     quickjs
     pthread
     m
@@ -150,8 +172,35 @@ target_link_libraries(security_example
     ${PLATFORM_LIBS}
 )
 
+# Create local storage example executable
+add_executable(local_storage_example
+    examples/local_storage_example.cpp
+)
+
+target_link_libraries(local_storage_example
+    storage
+    security
+    ${PLATFORM_LIBS}
+)
+
 # Enable testing
+enable_testing()
 enable_testing()
 
 # Add tests directory
 add_subdirectory(tests)
+
+# Add the storage tests
+add_executable(local_storage_test
+    tests/unit/local_storage_test.cpp
+)
+
+target_link_libraries(local_storage_test
+    storage
+    security
+    gtest
+    gtest_main
+    ${PLATFORM_LIBS}
+)
+
+add_test(NAME LocalStorageTest COMMAND local_storage_test)
