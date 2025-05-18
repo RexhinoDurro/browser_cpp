@@ -3,9 +3,12 @@ cmake_minimum_required(VERSION 3.10)
 project(browser_cpp)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(MSVC)
+    add_compile_options(/std:c++20)  # Add explicit C++20 flag for MSVC
+endif()
 # Include filesystem library for C++17
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
     link_libraries(stdc++fs)
