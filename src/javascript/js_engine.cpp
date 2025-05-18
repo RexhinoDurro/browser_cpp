@@ -176,11 +176,10 @@ void JSEngine::setupDOMBindings(html::Document* document) {
     // Add basic browser API functions
     
     // console.log
-    JS_SetPropertyStr(m_context, globalObj, "console", JS_NewObject(m_context));
-    JSValue consoleObj = JS_GetPropertyStr(m_context, globalObj, "console");
+    JSValue consoleObj = JS_NewObject(m_context);
+    JS_SetPropertyStr(m_context, globalObj, "console", consoleObj);
     
-    JS_SetPropertyStr(m_context, consoleObj, "log", 
-                     JS_NewCFunction(m_context, 
+    JSValue logFunc = JS_NewCFunction(m_context, 
                                    [](JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv) -> JSValue {
                                        for (int i = 0; i < argc; i++) {
                                            const char* str = JS_ToCString(ctx, argv[i]);
@@ -190,9 +189,10 @@ void JSEngine::setupDOMBindings(html::Document* document) {
                                            }
                                        }
                                        return JS_UNDEFINED;
-                                   }, "log", 1));
+                                   }, "log", 1);
     
-    JS_FreeValue(m_context, consoleObj);
+    JS_SetPropertyStr(m_context, consoleObj, "log", logFunc);
+    
     JS_FreeValue(m_context, globalObj);
 }
 
@@ -209,22 +209,23 @@ void JSEngine::bindDocumentObject(html::Document* document) {
                      JS_NewString(m_context, document->title().c_str()));
     
     // Add document.getElementById method
-    JS_SetPropertyStr(m_context, documentObj, "getElementById", 
-                     JS_NewCFunction(m_context, 
-                                   [](JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv) -> JSValue {
-                                       if (argc < 1 || !JS_IsString(argv[0])) {
-                                           return JS_NULL;
-                                       }
-                                       
-                                       // This is a simplification - in a real implementation,
-                                       // we would store a pointer to the document in the document object
-                                       // Here, we're assuming the document is available somehow
-                                       
-                                       // For now, just return a mock element
-                                       JSValue elementObj = JS_NewObject(ctx);
-                                       JS_SetPropertyStr(ctx, elementObj, "innerHTML", JS_NewString(ctx, "Mock content"));
-                                       return elementObj;
-                                   }, "getElementById", 1));
+    JSValue getByIdFunc = JS_NewCFunction(m_context, 
+                               [](JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv) -> JSValue {
+                                   if (argc < 1 || !JS_IsString(argv[0])) {
+                                       return JS_NULL;
+                                   }
+                                   
+                                   // This is a simplification - in a real implementation,
+                                   // we would store a pointer to the document in the document object
+                                   // Here, we're assuming the document is available somehow
+                                   
+                                   // For now, just return a mock element
+                                   JSValue elementObj = JS_NewObject(ctx);
+                                   JS_SetPropertyStr(ctx, elementObj, "innerHTML", JS_NewString(ctx, "Mock content"));
+                                   return elementObj;
+                               }, "getElementById", 1);
+    
+    JS_SetPropertyStr(m_context, documentObj, "getElementById", getByIdFunc);
     
     // Add document to global scope
     JS_SetPropertyStr(m_context, globalObj, "document", documentObj);
