@@ -84,11 +84,12 @@ bool Browser::loadUrl(const std::string& url, std::string& error) {
         std::cout << "Warning: Potential XSS detected in the response" << std::endl;
         
         // Apply XSS protection based on the configured mode
-        if (m_securityManager->xssProtection()->mode() == security::XssProtectionMode::BLOCK) {
+        auto xssMode = m_securityManager->xssProtection()->mode();
+        if (xssMode == security::XssProtectionMode::BLOCK) {
             error = "Potential XSS attack blocked";
             return false;
         }
-        else if (m_securityManager->xssProtection()->mode() == security::XssProtectionMode::ENABLED) {
+        else if (xssMode == security::XssProtectionMode::ENABLED) {
             // Sanitize the HTML
             html = m_securityManager->sanitizeHtml(html);
         }
@@ -412,6 +413,9 @@ void Browser::processSecurityHeaders(const std::map<std::string, std::string>& h
     }
 }
 
+// Note: These functions are already declared in the header file
+// so they are commented out here to avoid duplicate definition errors
+/*
 html::Document* Browser::currentDocument() const {
     return m_domTree.document();
 }
@@ -419,5 +423,6 @@ html::Document* Browser::currentDocument() const {
 std::shared_ptr<layout::Box> Browser::layoutRoot() const {
     return m_layoutEngine.layoutRoot();
 }
+*/
 
 } // namespace browser
