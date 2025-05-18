@@ -3,6 +3,7 @@
 #include "css/style_resolver.h"
 #include "layout/layout_engine.h"
 #include "rendering/renderer.h"
+#include "rendering/paint_system.h"
 #include "networking/resource_loader.h"
 #include <iostream>
 #include <string>
@@ -21,6 +22,14 @@ int main(int argc, char* argv[]) {
     
     browser::rendering::Renderer renderer;
     renderer.initialize();
+    
+    // Create and initialize the paint system
+    std::shared_ptr<browser::rendering::PaintSystem> paintSystem = 
+        std::make_shared<browser::rendering::PaintSystem>();
+    paintSystem->initialize();
+    
+    // Set the paint system for the renderer
+    renderer.setPaintSystem(paintSystem);
     
     browser::javascript::JSEngine jsEngine;
     jsEngine.initialize();
@@ -131,10 +140,19 @@ int main(int argc, char* argv[]) {
         std::cout << "\nLayout tree structure:" << std::endl;
         layoutEngine.printLayoutTree(std::cout);
         
-        // Render the layout tree to ASCII art
-        std::string asciiRender = renderer.renderToASCII(layoutRoot.get(), 80, 30);
-        std::cout << "\nASCII Rendering:" << std::endl;
-        std::cout << asciiRender << std::endl;
+        // Create a render target
+        auto renderTarget = renderer.createTarget(browser::rendering::RenderTargetType::CONSOLE, 80, 30);
+        
+        if (renderTarget) {
+            // Render the layout tree to the target
+            renderer.render(layoutRoot.get(), renderTarget.get());
+            
+            // Get the output
+            std::cout << "\nASCII Rendering:" << std::endl;
+            std::cout << renderTarget->toString() << std::endl;
+        } else {
+            std::cout << "Failed to create render target" << std::endl;
+        }
     } else {
         std::cout << "Failed to create layout tree" << std::endl;
     }
@@ -196,9 +214,17 @@ int main(int argc, char* argv[]) {
     layoutRoot = layoutEngine.layoutRoot();
     
     if (layoutRoot) {
-        std::string asciiRender = renderer.renderToASCII(layoutRoot.get(), 80, 30);
-        std::cout << "\nUpdated ASCII Rendering after JavaScript:" << std::endl;
-        std::cout << asciiRender << std::endl;
+        // Create a render target
+        auto renderTarget = renderer.createTarget(browser::rendering::RenderTargetType::CONSOLE, 80, 30);
+        
+        if (renderTarget) {
+            // Render the layout tree to the target
+            renderer.render(layoutRoot.get(), renderTarget.get());
+            
+            // Get the output
+            std::cout << "\nUpdated ASCII Rendering after JavaScript:" << std::endl;
+            std::cout << renderTarget->toString() << std::endl;
+        }
     }
     
     // Wait for any pending resource requests to complete
