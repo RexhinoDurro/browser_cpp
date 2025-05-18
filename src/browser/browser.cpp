@@ -31,11 +31,15 @@ bool Browser::initialize() {
         return false;
     }
     
+#ifndef JS_ENGINE_DISABLED
     // Initialize JavaScript engine
     if (!m_jsEngine.initialize()) {
         std::cerr << "Failed to initialize JavaScript engine" << std::endl;
         return false;
     }
+#else
+    std::cout << "JavaScript support is disabled in this build" << std::endl;
+#endif
     
     // Create and initialize resource loader
     m_resourceLoader = std::make_unique<networking::ResourceLoader>();
@@ -223,6 +227,13 @@ bool Browser::loadStylesheets(const std::string& baseUrl) {
     return true;
 }
 
+#ifdef JS_ENGINE_DISABLED
+// Stub implementation when JavaScript is disabled
+bool Browser::loadScripts(const std::string& baseUrl) {
+    std::cout << "JavaScript support is disabled in this build" << std::endl;
+    return true;
+}
+#else
 bool Browser::loadScripts(const std::string& baseUrl) {
     // Get script sources
     std::vector<std::string> scriptSources = m_domTree.findScriptSources();
@@ -295,6 +306,7 @@ bool Browser::loadScripts(const std::string& baseUrl) {
     
     return true;
 }
+#endif
 
 bool Browser::loadImages(const std::string& baseUrl) {
     // Get image sources
@@ -398,6 +410,14 @@ void Browser::processSecurityHeaders(const std::map<std::string, std::string>& h
         // In a real browser, this would control browser features
         // We don't implement Feature Policy in this simple browser
     }
+}
+
+html::Document* Browser::currentDocument() const {
+    return m_domTree.document();
+}
+
+std::shared_ptr<layout::Box> Browser::layoutRoot() const {
+    return m_layoutEngine.layoutRoot();
 }
 
 } // namespace browser

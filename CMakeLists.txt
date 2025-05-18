@@ -1,4 +1,3 @@
-# Update main CMakeLists.txt to include the UI components
 cmake_minimum_required(VERSION 3.10)
 project(browser_cpp)
 
@@ -8,7 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(MSVC)
     add_compile_options(/std:c++20)  # Add explicit C++20 flag for MSVC
+    # Define JS_ENGINE_DISABLED to skip JavaScript components
+    add_definitions(-DJS_ENGINE_DISABLED)
 endif()
+
 # Include filesystem library for C++17
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
     link_libraries(stdc++fs)
@@ -66,13 +68,6 @@ if(TARGET glfw3 AND NOT TARGET glfw)
   add_library(glfw ALIAS glfw3)
 endif()
 
-# Add QuickJS library
-add_library(quickjs STATIC IMPORTED)
-set_target_properties(quickjs PROPERTIES
-    IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/third_party/quickjs/libquickjs.a"
-    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/third_party/quickjs"
-)
-
 # Add NanoVG library
 set(NANOVG_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/nanovg")
 include_directories(${NANOVG_SOURCE_DIR}/src)
@@ -93,18 +88,11 @@ set(BROWSER_SOURCES
     src/rendering/paint_system.cpp
 )
 
-# Add JavaScript engine sources
-set(JS_SOURCES
-    src/javascript/js_engine.cpp
-    src/javascript/js_bindings.cpp
-)
-
 # Add networking sources
 set(NETWORKING_SOURCES
     src/networking/http_client.cpp
     src/networking/dns_resolver.cpp
     src/networking/cache.cpp
-    src/networking/resource_loader.h
 )
 
 # Add security sources
@@ -137,11 +125,6 @@ set(BROWSER_CORE_SOURCES
 # Create browser library
 add_library(browser_core STATIC
     ${BROWSER_SOURCES}
-)
-
-# Create JavaScript engine library
-add_library(js_engine STATIC
-    ${JS_SOURCES}
 )
 
 # Create networking library
@@ -177,11 +160,6 @@ else()
 endif()
 
 # Link libraries
-target_link_libraries(js_engine
-    quickjs
-    browser_core
-)
-
 target_link_libraries(networking
     ${PLATFORM_LIBS}
 )
@@ -203,7 +181,6 @@ target_link_libraries(ui
 
 target_link_libraries(browser_main
     browser_core
-    js_engine
     networking
     security
     storage
@@ -217,16 +194,16 @@ add_executable(browser_cpp
 target_link_libraries(browser_cpp
     browser_main
     browser_core
-    js_engine
     networking
     security
     storage
     ui
-    quickjs
     nanovg
     glfw
     ${OPENGL_LIBRARIES}
-    pthread
-    m
     ${PLATFORM_LIBS}
 )
+
+if(WIN32)
+    target_link_libraries(browser_cpp wsock32 ws2_32)
+endif()
