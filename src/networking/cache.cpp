@@ -1,19 +1,26 @@
 #include "cache.h"
 #include <iostream>
 #include <sstream>
-#include <fstream>
 #include <algorithm>
 #include <cctype>
 #include <cstring>
 #include <filesystem>
 #include <functional>
 #include <iomanip>
+#include <fstream>
 
 // For cross-platform filesystem operations
 namespace fs = std::filesystem;
 
 namespace browser {
 namespace networking {
+
+// Windows compatibility definition for strcasecmp
+#ifdef _WIN32
+int strcasecmp(const char* s1, const char* s2) {
+    return _stricmp(s1, s2);
+}
+#endif
 
 //-----------------------------------------------------------------------------
 // CacheEntry Implementation
@@ -670,20 +677,6 @@ void Cache::enforceDiskCacheSize() {
             }
         }
     }
-}
-
-namespace browser {
-namespace networking {
-
-namespace {
-// Helper for case-insensitive string comparison
-int strcasecmp(const char* s1, const char* s2) {
-    #ifdef _WIN32
-    return _stricmp(s1, s2);
-    #else
-    return ::strcasecmp(s1, s2);
-    #endif
-}
 }
 
 } // namespace networking

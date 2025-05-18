@@ -148,6 +148,14 @@ public:
     DisplayList();
     ~DisplayList();
     
+    // Disallow copying (unique_ptr can't be copied)
+    DisplayList(const DisplayList&) = delete;
+    DisplayList& operator=(const DisplayList&) = delete;
+    
+    // Allow moving
+    DisplayList(DisplayList&&) = default;
+    DisplayList& operator=(DisplayList&&) = default;
+    
     // Add items to the list
     void appendItem(std::unique_ptr<DisplayItem> item);
     
