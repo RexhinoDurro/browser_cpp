@@ -43,6 +43,8 @@ endif()
 set(HTML_SOURCES
     src/html/html_parser.cpp
     src/html/html_parser.h
+    src/html/dom_tree.h
+    src/html/dom_tree.cpp
 )
 
 set(CSS_SOURCES
@@ -68,31 +70,26 @@ set(JS_SOURCES
 set(LAYOUT_SOURCES
     src/layout/layout_engine.cpp
     src/layout/layout_engine.h
-    src/layout/box.cpp
-    src/layout/box.h
-    src/layout/block_box.cpp
-    src/layout/block_box.h
-    src/layout/inline_box.cpp
-    src/layout/inline_box.h
-    src/layout/text_box.cpp
-    src/layout/text_box.h
+    src/layout/box_model.h
+    src/layout/box_model.cpp
 )
 
 set(RENDERING_SOURCES
-    src/rendering/renderer.cpp
+    
     src/rendering/renderer.h
     src/rendering/paint_system.cpp
     src/rendering/paint_system.h
     src/rendering/custom_renderer.cpp
     src/rendering/custom_renderer.h
-    src/rendering/render_target.cpp
-    src/rendering/render_target.h
+    src/rendering/modified_renderer.cpp
+    src/rendering/renderer_integration.h
+    src/rendering/paint_system.h
+    src/rendering/paint_system.cpp
     src/rendering/custom_render_target.cpp
     src/rendering/custom_render_target.h
 )
 
 set(NETWORKING_SOURCES
-    src/networking/resource_loader.cpp
     src/networking/resource_loader.h
     src/networking/http_client.cpp
     src/networking/http_client.h
@@ -133,6 +130,11 @@ set(UI_SOURCES
     src/ui/custom_controls.h
     src/ui/custom_canvas.cpp
     src/ui/custom_canvas.h
+    src/ui/window_macos.mm
+    src/ui/window_win32.cpp
+    src/ui/window_win32.h
+    src/ui/window_unix.h
+    
 )
 
 # Platform-specific UI sources

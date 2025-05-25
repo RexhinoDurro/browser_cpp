@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Browser - Start Page</title>
+    <link rel="stylesheet" href="default.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">Simple Browser</h1>
+            <p class="subtitle">A minimalist web browser built from scratch</p>
+        </header>
+
+        <main class="main-content">
+            <section class="search-section">
+                <div class="search-container">
+                    <input type="text" class="search-input" placeholder="Enter URL or search..." id="urlInput">
+                    <button class="search-button" id="goButton">Go</button>
+                </div>
+            </section>
+
+            <section class="bookmarks-section">
+                <h2 class="section-title">Quick Links</h2>
+                <div class="bookmarks-grid">
+                    <a href="https://www.google.com" class="bookmark-card">
+                        <div class="bookmark-icon google">G</div>
+                        <span class="bookmark-title">Google</span>
+                        <span class="bookmark-description">Search Engine</span>
+                    </a>
+                    
+                    <a href="https://www.github.com" class="bookmark-card">
+                        <div class="bookmark-icon github">GH</div>
+                        <span class="bookmark-title">GitHub</span>
+                        <span class="bookmark-description">Code Repository</span>
+                    </a>
+                    
+                    <a href="https://www.wikipedia.org" class="bookmark-card">
+                        <div class="bookmark-icon wikipedia">W</div>
+                        <span class="bookmark-title">Wikipedia</span>
+                        <span class="bookmark-description">Encyclopedia</span>
+                    </a>
+                    
+                    <a href="https://www.stackoverflow.com" class="bookmark-card">
+                        <div class="bookmark-icon stackoverflow">SO</div>
+                        <span class="bookmark-title">Stack Overflow</span>
+                        <span class="bookmark-description">Q&A for Developers</span>
+                    </a>
+                    
+                    <a href="https://www.youtube.com" class="bookmark-card">
+                        <div class="bookmark-icon youtube">YT</div>
+                        <span class="bookmark-title">YouTube</span>
+                        <span class="bookmark-description">Video Platform</span>
+                    </a>
+                    
+                    <a href="about:version" class="bookmark-card">
+                        <div class="bookmark-icon about">?</div>
+                        <span class="bookmark-title">About</span>
+                        <span class="bookmark-description">Browser Info</span>
+                    </a>
+                </div>
+            </section>
+
+            <section class="features-section">
+                <h2 class="section-title">Browser Features</h2>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <h3>HTML5 Parser</h3>
+                        <p>Full HTML5 document parsing with DOM tree construction</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>CSS Engine</h3>
+                        <p>CSS2.1 support with partial CSS3 features</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>JavaScript</h3>
+                        <p>Custom ES5 JavaScript interpreter</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Security</h3>
+                        <p>Built-in XSS protection and CSP support</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 Simple Browser - Educational Project</p>
+        </footer>
+    </div>
+
+    <script>
+        // Handle URL input
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                navigateToUrl(this.value);
+            }
+        });
+
+        document.getElementById('goButton').addEventListener('click', function() {
+            const input = document.getElementById('urlInput');
+            navigateToUrl(input.value);
+        });
+
+        function navigateToUrl(url) {
+            if (!url.trim()) return;
+            
+            // Simple URL validation and completion
+            let finalUrl = url.trim();
+            
+            // If it contains spaces, treat as search
+            if (finalUrl.includes(' ')) {
+                finalUrl = 'https://www.google.com/search?q=' + encodeURIComponent(finalUrl);
+            }
+            // If no protocol specified, add http://
+            else if (!finalUrl.match(/^https?:\/\//)) {
+                // Check if it looks like a domain
+                if (finalUrl.includes('.') && !finalUrl.includes('/')) {
+                    finalUrl = 'http://' + finalUrl;
+                } else {
+                    // Treat as search
+                    finalUrl = 'https://www.google.com/search?q=' + encodeURIComponent(finalUrl);
+                }
+            }
+            
+            // Navigate (in a real browser, this would change the location)
+            if (typeof window !== 'undefined' && window.location) {
+                window.location.href = finalUrl;
+            } else {
+                // For our custom browser, we might need a different approach
+                console.log('Navigating to:', finalUrl);
+            }
+        }
+
+        // Focus the search input on page load
+        window.addEventListener('load', function() {
+            document.getElementById('urlInput').focus();
+        });
+    </script>
+</body>
+</html>

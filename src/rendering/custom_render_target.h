@@ -1,14 +1,18 @@
-// src/rendering/custom_render_target.h
-#ifndef BROWSER_CUSTOM_RENDER_TARGET_H
-#define BROWSER_CUSTOM_RENDER_TARGET_H
+#ifndef BROWSER_RENDERING_CUSTOM_RENDER_TARGET_H
+#define BROWSER_RENDERING_CUSTOM_RENDER_TARGET_H
 
-#include "renderer.h"
+#include "render_target.h"
 #include "custom_renderer.h"
+#include <memory>
+#include <string>
 
 namespace browser {
 namespace rendering {
 
-// Custom render target implementation using our custom renderer
+// Forward declarations
+class CustomRenderContext;
+
+// Custom render target implementation
 class CustomRenderTarget : public RenderTarget {
 public:
     CustomRenderTarget(int width, int height);
@@ -19,10 +23,12 @@ public:
     virtual RenderTargetType type() const override;
     virtual int width() const override;
     virtual int height() const override;
-    virtual std::string toString() override;
     
-    // Get custom context
-    CustomRenderContext* getCustomContext() { return m_context.get(); }
+    // Get the custom context
+    CustomRenderContext* getCustomContext() const { return m_context.get(); }
+    
+    // Convert to string representation (ASCII art)
+    std::string toString();
     
 private:
     int m_width;
@@ -31,45 +37,30 @@ private:
     std::shared_ptr<RenderingContext> m_renderingContext;
 };
 
-// Custom rendering context adapter
+// Adapter to bridge CustomRenderContext with RenderingContext
 class CustomRenderingContext : public RenderingContext {
 public:
     CustomRenderingContext(CustomRenderContext* ctx);
     virtual ~CustomRenderingContext();
     
-    // RenderingContext interface
-    virtual void setFillColor(const Color& color) override;
-    virtual void fillRect(float x, float y, float width, float height) override;
+    // Basic drawing operations
+    void setFillColor(const Color& color);
+    void fillRect(float x, float y, float width, float height);
     
-    virtual void setStrokeColor(const Color& color) override;
-    virtual void strokeRect(float x, float y, float width, float height, float lineWidth) override;
+    void setStrokeColor(const Color& color);
+    void strokeRect(float x, float y, float width, float height, float lineWidth = 1.0f);
     
-    virtual void setTextColor(const Color& color) override;
-    virtual void drawText(const std::string& text, float x, float y, const std::string& fontFamily, float fontSize) override;
+    void setTextColor(const Color& color);
+    void drawText(const std::string& text, float x, float y, 
+                  const std::string& fontFamily = "Arial", float fontSize = 12.0f);
     
-    virtual void save() override;
-    virtual void restore() override;
-    virtual void translate(float x, float y) override;
+    // Transform operations
+    void save();
+    void restore();
+    void translate(float x, float y);
     
-    virtual std::string toASCII(int width, int height) override;
-    
-    // Draw line method (needed for LineDisplayItem)
-    virtual void drawLine(float x1, float y1, float x2, float y2, float lineWidth) {
-        if (!m_context) return;
-        
-        m_context->beginPath();
-        m_context->moveTo(x1, y1);
-        m_context->lineTo(x2, y2);
-        // Modified to use setColor method instead of constructor
-        Paint strokePaint;
-        strokePaint.setColor(m_strokeColor);
-        m_context->setStrokePaint(strokePaint);
-        m_context->setStrokeWidth(lineWidth);
-        m_context->stroke();
-    }
-    
-    // Get underlying context
-    CustomRenderContext* getCustomContext() const { return m_context; }
+    // Convert to ASCII representation
+    std::string toASCII(int width, int height);
     
 private:
     CustomRenderContext* m_context;
@@ -81,4 +72,4 @@ private:
 } // namespace rendering
 } // namespace browser
 
-#endif // BROWSER_CUSTOM_RENDER_TARGET_H
+#endif // BROWSER_RENDERING_CUSTOM_RENDER_TARGET_H

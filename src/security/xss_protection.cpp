@@ -141,7 +141,7 @@ std::string XssProtection::sanitizeHtml(const std::string& html, SanitizationLev
         std::regex eventHandlerRegex("\\s+on[a-z]+\\s*=", std::regex::icase);
         sanitized = std::regex_replace(sanitized, eventHandlerRegex, " data-removed=");
     }
-    else if (level == SanitizationLevel::STRICT) {
+    else if (level == SanitizationLevel::STRICT_LEVEL) {
         // In strict mode, we'd whitelist tags and attributes
         // This would require a proper HTML parser
         // For demonstration, we'll use a simplified approach

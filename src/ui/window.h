@@ -1,4 +1,4 @@
-// src/ui/window.h - Custom UI implementation without third-party dependencies
+// src/ui/window.h - Fixed window header with proper forward declarations
 
 #ifndef BROWSER_UI_WINDOW_H
 #define BROWSER_UI_WINDOW_H
@@ -8,8 +8,18 @@
 #include <functional>
 #include <vector>
 #include <map>
-#include "../browser/browser.h"
-#include "../rendering/renderer.h"
+
+// Forward declarations to avoid circular dependencies
+namespace browser {
+    class Browser;
+    namespace rendering {
+        class Renderer;
+        class RenderTarget;
+    }
+    namespace layout {
+        class Box;
+    }
+}
 
 namespace browser {
 namespace ui {
@@ -299,93 +309,6 @@ private:
     void deletePreviousChar();
     void deleteNextChar();
     void insertText(const std::string& text);
-};
-
-// Browser window class - wraps everything together
-class BrowserWindow {
-public:
-    BrowserWindow(const WindowConfig& config = WindowConfig());
-    ~BrowserWindow();
-    
-    // Initialize the window
-    bool initialize();
-    
-    // Window control methods
-    void show();
-    void hide();
-    void close();
-    bool isOpen() const;
-    
-    // Window properties
-    void setSize(int width, int height);
-    void getSize(int& width, int& height) const;
-    
-    void setPosition(int x, int y);
-    void getPosition(int& x, int& y) const;
-    
-    void setTitle(const std::string& title);
-    std::string getTitle() const;
-    
-    // Browser navigation
-    bool loadUrl(const std::string& url);
-    bool goBack();
-    bool goForward();
-    bool reload();
-    void stopLoading();
-    
-    // Browser access
-    void setBrowser(std::shared_ptr<browser::Browser> browser);
-    std::shared_ptr<browser::Browser> getBrowser() const;
-    
-    // Event handling
-    void processEvents();
-    void runEventLoop();
-    
-    // Navigation callbacks
-    void setUrlChangeCallback(std::function<void(const std::string&)> callback);
-    void setTitleChangeCallback(std::function<void(const std::string&)> callback);
-    void setLoadingStateCallback(std::function<void(bool)> callback);
-    
-private:
-    // Core components
-    std::shared_ptr<Window> m_window;
-    std::shared_ptr<browser::Browser> m_browser;
-    std::shared_ptr<rendering::Renderer> m_renderer;
-    std::shared_ptr<rendering::RenderTarget> m_renderTarget;
-    
-    // Navigation state
-    std::string m_currentUrl;
-    std::vector<std::string> m_history;
-    size_t m_historyIndex;
-    bool m_isLoading;
-    
-    // UI controls
-    std::shared_ptr<Button> m_backButton;
-    std::shared_ptr<Button> m_forwardButton;
-    std::shared_ptr<Button> m_reloadButton;
-    std::shared_ptr<Button> m_stopButton;
-    std::shared_ptr<TextInput> m_addressBar;
-    
-    // UI state
-    bool m_initialized;
-    
-    // Callbacks
-    std::function<void(const std::string&)> m_urlChangeCallback;
-    std::function<void(const std::string&)> m_titleChangeCallback;
-    std::function<void(bool)> m_loadingStateCallback;
-    
-    // Internal event handlers
-    void handleKeyEvent(Key key, KeyAction action);
-    void handleMouseEvent(MouseButton button, MouseAction action, int x, int y);
-    void handleResizeEvent(int width, int height);
-    void handleCloseEvent();
-    
-    // UI initialization
-    void initializeControls();
-    
-    // Rendering
-    void renderPage();
-    void renderLayoutBox(layout::Box* box, Canvas* canvas);
 };
 
 } // namespace ui

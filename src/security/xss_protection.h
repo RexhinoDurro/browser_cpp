@@ -21,7 +21,7 @@ enum class XssProtectionMode {
 enum class SanitizationLevel {
     NONE,           // No sanitization
     BASIC,          // Basic sanitization (remove dangerous tags/attributes)
-    STRICT,         // Strict sanitization (whitelist approach)
+    STRICT_LEVEL,   // Strict sanitization (whitelist approach)
     ESCAPE_ONLY     // Only escape HTML special characters
 };
 
