@@ -1,260 +1,4 @@
-#include <memory>
 #include "js_parser.h"
-// LogicalAnd -> Equality ("&&" Equality)*
-std::shared_ptr<ExpressionNode> JSParser::logicalAnd() {
-    std::shared_ptr<ExpressionNode> expr = equality();
-    
-    while (match(TokenType::AMPERSAND_AMPERSAND)) {
-        std::shared_ptr<ExpressionNode> right = equality();
-        expr = std::make_shared<BinaryExpr>(BinaryExpr::Operator::AND, expr, right);
-    }
-    
-    return expr;
-}
-
-// Equality -> Comparison (("==" | "!=" | "===" | "!==") Comparison)*
-std::shared_ptr<ExpressionNode> JSParser::equality() {
-    std::shared_ptr<ExpressionNode> expr = comparison();
-    
-    while (true) {
-        BinaryExpr::Operator op;
-        
-        if (match(TokenType::EQUAL_EQUAL)) {
-            op = BinaryExpr::Operator::EQUAL;
-        } else if (match(TokenType::BANG_EQUAL)) {
-            op = BinaryExpr::Operator::NOT_EQUAL;
-        } else if (match(TokenType::EQUAL_EQUAL_EQUAL)) {
-            op = BinaryExpr::Operator::STRICT_EQUAL;
-        } else if (match(TokenType::BANG_EQUAL_EQUAL)) {
-            op = BinaryExpr::Operator::STRICT_NOT_EQUAL;
-        } else {
-            break;
-        }
-        
-        std::shared_ptr<ExpressionNode> right = comparison();
-        expr = std::make_shared<BinaryExpr>(op, expr, right);
-    }
-    
-    return expr;
-}
-
-// Comparison -> Term (("<" | "<=" | ">" | ">=") Term)*
-std::shared_ptr<ExpressionNode> JSParser::comparison() {
-    std::shared_ptr<ExpressionNode> expr = term();
-    
-    while (true) {
-        BinaryExpr::Operator op;
-        
-        if (match(TokenType::LESS)) {
-            op = BinaryExpr::Operator::LESS;
-        } else if (match(TokenType::LESS_EQUAL)) {
-            op = BinaryExpr::Operator::LESS_EQUAL;
-        } else if (match(TokenType::GREATER)) {
-            op = BinaryExpr::Operator::GREATER;
-        } else if (match(TokenType::GREATER_EQUAL)) {
-            op = BinaryExpr::Operator::GREATER_EQUAL;
-        } else {
-            break;
-        }
-        
-        std::shared_ptr<ExpressionNode> right = term();
-        expr = std::make_shared<BinaryExpr>(op, expr, right);
-    }
-    
-    return expr;
-}
-
-// Term -> Factor (("+" | "-") Factor)*
-std::shared_ptr<ExpressionNode> JSParser::term() {
-    std::shared_ptr<ExpressionNode> expr = factor();
-    
-    while (true) {
-        BinaryExpr::Operator op;
-        
-        if (match(TokenType::PLUS)) {
-            op = BinaryExpr::Operator::PLUS;
-        } else if (match(TokenType::MINUS)) {
-            op = BinaryExpr::Operator::MINUS;
-        } else {
-            break;
-        }
-        
-        std::shared_ptr<ExpressionNode> right = factor();
-        expr = std::make_shared<BinaryExpr>(op, expr, right);
-    }
-    
-    return expr;
-}
-
-// Factor -> Unary (("*" | "/" | "%") Unary)*
-std::shared_ptr<ExpressionNode> JSParser::factor() {
-    std::shared_ptr<ExpressionNode> expr = unary();
-    
-    while (true) {
-        BinaryExpr::Operator op;
-        
-        if (match(TokenType::STAR)) {
-            op = BinaryExpr::Operator::MULTIPLY;
-        } else if (match(TokenType::SLASH)) {
-            op = BinaryExpr::Operator::DIVIDE;
-        } else if (match(TokenType::PERCENT)) {
-            op = BinaryExpr::Operator::MODULO;
-        } else if (match(TokenType::STAR_STAR)) {
-            op = BinaryExpr::Operator::POWER;
-        } else {
-            break;
-        }
-        
-        std::shared_ptr<ExpressionNode> right = unary();
-        expr = std::make_shared<BinaryExpr>(op, expr, right);
-    }
-    
-    return expr;
-}
-
-// Unary -> ("!" | "-" | "++" | "--") Unary | Call
-std::shared_ptr<ExpressionNode> JSParser::unary() {
-    if (match(TokenType::BANG)) {
-        std::shared_ptr<ExpressionNode> right = unary();
-        return std::make_shared<UnaryExpr>(UnaryExpr::Operator::NOT, right, true);
-    }
-    
-    if (match(TokenType::MINUS)) {
-        std::shared_ptr<ExpressionNode> right = unary();
-        return std::make_shared<UnaryExpr>(UnaryExpr::Operator::MINUS, right, true);
-    }
-    
-    if (match(TokenType::PLUS_PLUS)) {
-        std::shared_ptr<ExpressionNode> right = unary();
-        return std::make_shared<UnaryExpr>(UnaryExpr::Operator::INCREMENT, right, true);
-    }
-    
-    if (match(TokenType::MINUS_MINUS)) {
-        std::shared_ptr<ExpressionNode> right = unary();
-        return std::make_shared<UnaryExpr>(UnaryExpr::Operator::DECREMENT, right, true);
-    }
-    
-    return call();
-}
-
-// Call -> Primary ("(" Arguments? ")" | "." IDENTIFIER | "[" Expression "]")*
-std::shared_ptr<ExpressionNode> JSParser::call() {
-    std::shared_ptr<ExpressionNode> expr = primary();
-    
-    while (true) {
-        if (match(TokenType::LEFT_PAREN)) {
-            expr = finishCall(expr);
-        } else if (match(TokenType::DOT)) {
-            Token name = consume(TokenType::IDENTIFIER, "Expect property name after '.'.");
-            auto property = std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::STRING, name.lexeme);
-            expr = std::make_shared<MemberExpr>(expr, property, false);
-        } else if (match(TokenType::LEFT_BRACKET)) {
-            std::shared_ptr<ExpressionNode> index = expression();
-            consume(TokenType::RIGHT_BRACKET, "Expect ']' after index.");
-            expr = std::make_shared<MemberExpr>(expr, index, true);
-        } else {
-            break;
-        }
-    }
-    
-    return expr;
-}
-
-// Primary -> NUMBER | STRING | "true" | "false" | "null" | "undefined" | IDENTIFIER | "(" Expression ")" | "{" ObjectProps "}" | "[" ArrayElements "]"
-std::shared_ptr<ExpressionNode> JSParser::primary() {
-    if (match(TokenType::NUMBER)) {
-        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::NUMBER, previous().lexeme);
-    }
-    
-    if (match(TokenType::STRING)) {
-        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::STRING, previous().lexeme);
-    }
-    
-    if (match(TokenType::TRUE)) {
-        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::BOOLEAN, "true");
-    }
-    
-    if (match(TokenType::FALSE)) {
-        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::BOOLEAN, "false");
-    }
-    
-    if (match(TokenType::NULL_TOKEN)) {
-        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::NULL_TYPE, "null");
-    }
-    
-    if (match(TokenType::UNDEFINED)) {
-        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::UNDEFINED, "undefined");
-    }
-    
-    if (match(TokenType::IDENTIFIER)) {
-        return std::make_shared<VariableExpr>(previous().lexeme);
-    }
-    
-    if (match(TokenType::LEFT_PAREN)) {
-        std::shared_ptr<ExpressionNode> expr = expression();
-        consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
-        return expr;
-    }
-    
-    if (match(TokenType::LEFT_BRACE)) {
-        // Object literal
-        std::vector<ObjectExpr::Property> properties;
-        
-        if (!check(TokenType::RIGHT_BRACE)) {
-            do {
-                // Parse property
-                if (check(TokenType::STRING) || check(TokenType::IDENTIFIER)) {
-                    Token key = advance();
-                    consume(TokenType::COLON, "Expect ':' after property name.");
-                    std::shared_ptr<ExpressionNode> value = expression();
-                    properties.push_back(ObjectExpr::Property(key.lexeme, value));
-                } else {
-                    throw error(peek(), "Expect property name.");
-                }
-            } while (match(TokenType::COMMA));
-        }
-        
-        consume(TokenType::RIGHT_BRACE, "Expect '}' after object literal.");
-        return std::make_shared<ObjectExpr>(properties);
-    }
-    
-    if (match(TokenType::LEFT_BRACKET)) {
-        // Array literal
-        std::vector<std::shared_ptr<ExpressionNode>> elements;
-        
-        if (!check(TokenType::RIGHT_BRACKET)) {
-            do {
-                elements.push_back(expression());
-            } while (match(TokenType::COMMA));
-        }
-        
-        consume(TokenType::RIGHT_BRACKET, "Expect ']' after array literal.");
-        return std::make_shared<ArrayExpr>(elements);
-    }
-    
-    throw error(peek(), "Expect expression.");
-}
-
-// Helper for parsing call expressions
-std::shared_ptr<ExpressionNode> JSParser::finishCall(std::shared_ptr<ExpressionNode> callee) {
-    std::vector<std::shared_ptr<ExpressionNode>> arguments;
-    
-    if (!check(TokenType::RIGHT_PAREN)) {
-        do {
-            if (arguments.size() >= 255) {
-                error(peek(), "Cannot have more than 255 arguments.");
-            }
-            arguments.push_back(expression());
-        } while (match(TokenType::COMMA));
-    }
-    
-    consume(TokenType::RIGHT_PAREN, "Expect ')' after arguments.");
-    
-    return std::make_shared<CallExpr>(callee, arguments);
-}
-
-} // namespace custom_js
-} // namespace browser#include "js_parser.h"
 #include <iostream>
 
 namespace browser {
@@ -671,3 +415,259 @@ std::shared_ptr<ExpressionNode> JSParser::logicalOr() {
     
     return expr;
 }
+
+// LogicalAnd -> Equality ("&&" Equality)*
+std::shared_ptr<ExpressionNode> JSParser::logicalAnd() {
+    std::shared_ptr<ExpressionNode> expr = equality();
+    
+    while (match(TokenType::AMPERSAND_AMPERSAND)) {
+        std::shared_ptr<ExpressionNode> right = equality();
+        expr = std::make_shared<BinaryExpr>(BinaryExpr::Operator::AND, expr, right);
+    }
+    
+    return expr;
+}
+
+// Equality -> Comparison (("==" | "!=" | "===" | "!==") Comparison)*
+std::shared_ptr<ExpressionNode> JSParser::equality() {
+    std::shared_ptr<ExpressionNode> expr = comparison();
+    
+    while (true) {
+        BinaryExpr::Operator op;
+        
+        if (match(TokenType::EQUAL_EQUAL)) {
+            op = BinaryExpr::Operator::EQUAL;
+        } else if (match(TokenType::BANG_EQUAL)) {
+            op = BinaryExpr::Operator::NOT_EQUAL;
+        } else if (match(TokenType::EQUAL_EQUAL_EQUAL)) {
+            op = BinaryExpr::Operator::STRICT_EQUAL;
+        } else if (match(TokenType::BANG_EQUAL_EQUAL)) {
+            op = BinaryExpr::Operator::STRICT_NOT_EQUAL;
+        } else {
+            break;
+        }
+        
+        std::shared_ptr<ExpressionNode> right = comparison();
+        expr = std::make_shared<BinaryExpr>(op, expr, right);
+    }
+    
+    return expr;
+}
+
+// Comparison -> Term (("<" | "<=" | ">" | ">=") Term)*
+std::shared_ptr<ExpressionNode> JSParser::comparison() {
+    std::shared_ptr<ExpressionNode> expr = term();
+    
+    while (true) {
+        BinaryExpr::Operator op;
+        
+        if (match(TokenType::LESS)) {
+            op = BinaryExpr::Operator::LESS;
+        } else if (match(TokenType::LESS_EQUAL)) {
+            op = BinaryExpr::Operator::LESS_EQUAL;
+        } else if (match(TokenType::GREATER)) {
+            op = BinaryExpr::Operator::GREATER;
+        } else if (match(TokenType::GREATER_EQUAL)) {
+            op = BinaryExpr::Operator::GREATER_EQUAL;
+        } else {
+            break;
+        }
+        
+        std::shared_ptr<ExpressionNode> right = term();
+        expr = std::make_shared<BinaryExpr>(op, expr, right);
+    }
+    
+    return expr;
+}
+
+// Term -> Factor (("+" | "-") Factor)*
+std::shared_ptr<ExpressionNode> JSParser::term() {
+    std::shared_ptr<ExpressionNode> expr = factor();
+    
+    while (true) {
+        BinaryExpr::Operator op;
+        
+        if (match(TokenType::PLUS)) {
+            op = BinaryExpr::Operator::PLUS;
+        } else if (match(TokenType::MINUS)) {
+            op = BinaryExpr::Operator::MINUS;
+        } else {
+            break;
+        }
+        
+        std::shared_ptr<ExpressionNode> right = factor();
+        expr = std::make_shared<BinaryExpr>(op, expr, right);
+    }
+    
+    return expr;
+}
+
+// Factor -> Unary (("*" | "/" | "%") Unary)*
+std::shared_ptr<ExpressionNode> JSParser::factor() {
+    std::shared_ptr<ExpressionNode> expr = unary();
+    
+    while (true) {
+        BinaryExpr::Operator op;
+        
+        if (match(TokenType::STAR)) {
+            op = BinaryExpr::Operator::MULTIPLY;
+        } else if (match(TokenType::SLASH)) {
+            op = BinaryExpr::Operator::DIVIDE;
+        } else if (match(TokenType::PERCENT)) {
+            op = BinaryExpr::Operator::MODULO;
+        } else if (match(TokenType::STAR_STAR)) {
+            op = BinaryExpr::Operator::POWER;
+        } else {
+            break;
+        }
+        
+        std::shared_ptr<ExpressionNode> right = unary();
+        expr = std::make_shared<BinaryExpr>(op, expr, right);
+    }
+    
+    return expr;
+}
+
+// Unary -> ("!" | "-" | "++" | "--") Unary | Call
+std::shared_ptr<ExpressionNode> JSParser::unary() {
+    if (match(TokenType::BANG)) {
+        std::shared_ptr<ExpressionNode> right = unary();
+        return std::make_shared<UnaryExpr>(UnaryExpr::Operator::NOT, right, true);
+    }
+    
+    if (match(TokenType::MINUS)) {
+        std::shared_ptr<ExpressionNode> right = unary();
+        return std::make_shared<UnaryExpr>(UnaryExpr::Operator::MINUS, right, true);
+    }
+    
+    if (match(TokenType::PLUS_PLUS)) {
+        std::shared_ptr<ExpressionNode> right = unary();
+        return std::make_shared<UnaryExpr>(UnaryExpr::Operator::INCREMENT, right, true);
+    }
+    
+    if (match(TokenType::MINUS_MINUS)) {
+        std::shared_ptr<ExpressionNode> right = unary();
+        return std::make_shared<UnaryExpr>(UnaryExpr::Operator::DECREMENT, right, true);
+    }
+    
+    return call();
+}
+
+// Call -> Primary ("(" Arguments? ")" | "." IDENTIFIER | "[" Expression "]")*
+std::shared_ptr<ExpressionNode> JSParser::call() {
+    std::shared_ptr<ExpressionNode> expr = primary();
+    
+    while (true) {
+        if (match(TokenType::LEFT_PAREN)) {
+            expr = finishCall(expr);
+        } else if (match(TokenType::DOT)) {
+            Token name = consume(TokenType::IDENTIFIER, "Expect property name after '.'.");
+            auto property = std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::STRING, name.lexeme);
+            expr = std::make_shared<MemberExpr>(expr, property, false);
+        } else if (match(TokenType::LEFT_BRACKET)) {
+            std::shared_ptr<ExpressionNode> index = expression();
+            consume(TokenType::RIGHT_BRACKET, "Expect ']' after index.");
+            expr = std::make_shared<MemberExpr>(expr, index, true);
+        } else {
+            break;
+        }
+    }
+    
+    return expr;
+}
+
+// Primary -> NUMBER | STRING | "true" | "false" | "null" | "undefined" | IDENTIFIER | "(" Expression ")" | "{" ObjectProps "}" | "[" ArrayElements "]"
+std::shared_ptr<ExpressionNode> JSParser::primary() {
+    if (match(TokenType::NUMBER)) {
+        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::NUMBER, previous().lexeme);
+    }
+    
+    if (match(TokenType::STRING)) {
+        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::STRING, previous().lexeme);
+    }
+    
+    if (match(TokenType::TRUE)) {
+        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::BOOLEAN, "true");
+    }
+    
+    if (match(TokenType::FALSE)) {
+        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::BOOLEAN, "false");
+    }
+    
+    if (match(TokenType::NULL_TOKEN)) {
+        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::NULL_TYPE, "null");
+    }
+    
+    if (match(TokenType::UNDEFINED)) {
+        return std::make_shared<LiteralExpr>(LiteralExpr::LiteralType::UNDEFINED, "undefined");
+    }
+    
+    if (match(TokenType::IDENTIFIER)) {
+        return std::make_shared<VariableExpr>(previous().lexeme);
+    }
+    
+    if (match(TokenType::LEFT_PAREN)) {
+        std::shared_ptr<ExpressionNode> expr = expression();
+        consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
+        return expr;
+    }
+    
+    if (match(TokenType::LEFT_BRACE)) {
+        // Object literal
+        std::vector<ObjectExpr::Property> properties;
+        
+        if (!check(TokenType::RIGHT_BRACE)) {
+            do {
+                // Parse property
+                if (check(TokenType::STRING) || check(TokenType::IDENTIFIER)) {
+                    Token key = advance();
+                    consume(TokenType::COLON, "Expect ':' after property name.");
+                    std::shared_ptr<ExpressionNode> value = expression();
+                    properties.push_back(ObjectExpr::Property(key.lexeme, value));
+                } else {
+                    throw error(peek(), "Expect property name.");
+                }
+            } while (match(TokenType::COMMA));
+        }
+        
+        consume(TokenType::RIGHT_BRACE, "Expect '}' after object literal.");
+        return std::make_shared<ObjectExpr>(properties);
+    }
+    
+    if (match(TokenType::LEFT_BRACKET)) {
+        // Array literal
+        std::vector<std::shared_ptr<ExpressionNode>> elements;
+        
+        if (!check(TokenType::RIGHT_BRACKET)) {
+            do {
+                elements.push_back(expression());
+            } while (match(TokenType::COMMA));
+        }
+        
+        consume(TokenType::RIGHT_BRACKET, "Expect ']' after array literal.");
+        return std::make_shared<ArrayExpr>(elements);
+    }
+    
+    throw error(peek(), "Expect expression.");
+}
+
+// Helper for parsing call expressions
+std::shared_ptr<ExpressionNode> JSParser::finishCall(std::shared_ptr<ExpressionNode> callee) {
+    std::vector<std::shared_ptr<ExpressionNode>> arguments;
+    
+    if (!check(TokenType::RIGHT_PAREN)) {
+        do {
+            if (arguments.size() >= 255) {
+                error(peek(), "Cannot have more than 255 arguments.");
+            }
+            arguments.push_back(expression());
+        } while (match(TokenType::COMMA));
+    }
+    
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after arguments.");
+    
+    return std::make_shared<CallExpr>(callee, arguments);
+}
+
+} // namespace custom_js
+} // namespace browser

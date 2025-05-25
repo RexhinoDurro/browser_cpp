@@ -119,8 +119,11 @@ set(RENDERING_SOURCES
 )
 
 set(JAVASCRIPT_SOURCES
-    src/javascript/js_engine.cpp
-    src/javascript/js_bindings.cpp
+    src/custom_js/js_lexer.cpp
+    src/custom_js/js_parser.cpp
+    src/custom_js/js_value.cpp
+    src/custom_js/js_interpreter.cpp
+    src/custom_js/js_engine.cpp
 )
 
 set(NETWORKING_SOURCES
@@ -203,3 +206,6 @@ message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
 # Installation rules
 install(TARGETS browser_app
         RUNTIME DESTINATION bin)
+
+add_executable(test_js_engine test_js_engine.cpp)
+target_link_libraries(test_js_engine browser_engine)

@@ -5,7 +5,7 @@
 #include "../css/style_resolver.h"
 #include "../layout/layout_engine.h"
 #include "../rendering/renderer.h"
-#include "../javascript/js_engine.h"
+#include "../custom_js/js_engine.h"
 #include "../networking/resource_loader.h"
 #include "../security/security_manager.h"
 #include <string>
@@ -30,7 +30,7 @@ public:
     css::StyleResolver* styleResolver() { return &m_styleResolver; }
     layout::LayoutEngine* layoutEngine() { return &m_layoutEngine; }
     rendering::Renderer* renderer() { return &m_renderer; }
-    javascript::JSEngine* jsEngine() { return &m_jsEngine; }
+    custom_js::JSEngine* jsEngine() { return &m_jsEngine; }
     networking::ResourceLoader* resourceLoader() { return m_resourceLoader.get(); }
     security::SecurityManager* securityManager() { return m_securityManager.get(); }
     
@@ -49,7 +49,7 @@ private:
     css::StyleResolver m_styleResolver;
     layout::LayoutEngine m_layoutEngine;
     rendering::Renderer m_renderer;
-    javascript::JSEngine m_jsEngine;
+    custom_js::JSEngine m_jsEngine;
     std::unique_ptr<networking::ResourceLoader> m_resourceLoader;
     std::unique_ptr<security::SecurityManager> m_securityManager;
     

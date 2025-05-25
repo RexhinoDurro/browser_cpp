@@ -1,69 +1,21 @@
+// A simple test in your main.cpp or a test file
 #include "browser/browser.h"
-#include "ui/window.h"
-#include "ui/controls.h"
 #include <iostream>
-#include <string>
-#include <memory>
 
-int main(int argc, char* argv[]) {
-    // Create and initialize browser window
-    browser::ui::WindowConfig config;
-    config.title = "Simple Browser";
-    config.width = 1024;
-    config.height = 768;
-    config.maximized = true;
-    
-    auto window = std::make_shared<browser::ui::BrowserWindow>(config);
-    
-    if (!window->initialize()) {
-        std::cerr << "Failed to initialize browser window" << std::endl;
+int main() {
+    browser::Browser browser;
+    if (!browser.initialize()) {
+        std::cerr << "Failed to initialize browser" << std::endl;
         return 1;
     }
     
-    // Create and initialize browser controls
-    auto controls = std::make_shared<browser::ui::BrowserControls>(window.get());
+    std::string script = "var x = 10; var y = 20; x + y;";
+    std::string result, error;
     
-    if (!controls->initialize()) {
-        std::cerr << "Failed to initialize browser controls" << std::endl;
-        return 1;
-    }
-    
-    // URL to load
-    std::string url = "https://example.com";
-    
-    // Override with command line argument if provided
-    if (argc > 1) {
-        url = argv[1];
-    }
-    
-    // Set URL in address bar
-    controls->setAddressBarText(url);
-    
-    // Show browser window
-    window->show();
-    
-    // Set up window callbacks
-    window->setUrlChangeCallback([&controls](const std::string& url) {
-        controls->setAddressBarText(url);
-    });
-    
-    window->setLoadingStateCallback([&controls](bool loading) {
-        controls->setLoading(loading);
-    });
-    
-    // Load initial URL
-    window->loadUrl(url);
-    
-    // Main event loop
-    while (window->isOpen()) {
-        // Process window events
-        window->processEvents();
-        
-        // Draw browser controls
-        controls->draw();
-        
-        // Limit frame rate (approx. 60 FPS)
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    if (browser.jsEngine()->executeScript(script, result, error)) {
+        std::cout << "Script result: " << result << std::endl;
+    } else {
+        std::cerr << "Script error: " << error << std::endl;
     }
     
     return 0;

@@ -1,6 +1,7 @@
 #include "js_interpreter.h"
 #include <iostream>
 #include <sstream>
+#include <cmath>
 
 namespace browser {
 namespace custom_js {

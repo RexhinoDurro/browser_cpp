@@ -297,7 +297,7 @@ bool Browser::loadScripts(const std::string& baseUrl) {
             
             // Execute JavaScript
             std::string result, jsError;
-            if (!m_jsEngine.executeScript(m_domTree.document(), jsText, result, jsError)) {
+            if (!m_jsEngine.executeScript(jsText, result, jsError)) {
                 std::cerr << "JavaScript error: " << jsError << std::endl;
             }
         } else {

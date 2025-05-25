@@ -1,11 +1,18 @@
 #include "js_engine.h"
+#include "js_value.h"
+#include "js_interpreter.h"
 #include <iostream>
-#include <sstream>
+#include <string>
+#include <memory>
+#include <limits>
+#include <cmath>
 
 namespace browser {
 namespace custom_js {
 
-JSEngine::JSEngine() {
+JSEngine::JSEngine()
+    : m_interpreter(nullptr)
+{
 }
 
 JSEngine::~JSEngine() {
@@ -37,17 +44,17 @@ bool JSEngine::initialize() {
     mathObj->set("E", JSValue(2.7182818284590452354));
     
     // Math functions
-    mathObj->set("abs", JSValue(std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue) {
+    mathObj->set("abs", JSValue(std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue thisValue) -> JSValue {
         if (args.empty()) return JSValue(std::numeric_limits<double>::quiet_NaN());
         return JSValue(std::abs(args[0].toNumber()));
     })));
     
-    mathObj->set("sqrt", JSValue(std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue) {
+    mathObj->set("sqrt", JSValue(std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue thisValue) -> JSValue {
         if (args.empty()) return JSValue(std::numeric_limits<double>::quiet_NaN());
         return JSValue(std::sqrt(args[0].toNumber()));
     })));
     
-    mathObj->set("min", JSValue(std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue) {
+    mathObj->set("min", JSValue(std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue thisValue) -> JSValue {
         if (args.empty()) return JSValue(std::numeric_limits<double>::infinity());
         double result = args[0].toNumber();
         for (size_t i = 1; i < args.size(); i++) {
@@ -56,7 +63,7 @@ bool JSEngine::initialize() {
         return JSValue(result);
     })));
     
-    mathObj->set("max", JSValue(std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue) {
+    mathObj->set("max", JSValue(std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue thisValue) -> JSValue {
         if (args.empty()) return JSValue(-std::numeric_limits<double>::infinity());
         double result = args[0].toNumber();
         for (size_t i = 1; i < args.size(); i++) {
@@ -65,7 +72,7 @@ bool JSEngine::initialize() {
         return JSValue(result);
     })));
     
-    mathObj->set("random", JSValue(std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue) {
+    mathObj->set("random", JSValue(std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue thisValue) -> JSValue {
         return JSValue(static_cast<double>(std::rand()) / RAND_MAX);
     })));
     
@@ -73,12 +80,12 @@ bool JSEngine::initialize() {
     m_interpreter->defineGlobalVariable("Math", JSValue(mathObj));
     
     // Set up Array constructor
-    auto arrayConstructor = std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue) {
+    auto arrayConstructor = std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue thisValue) -> JSValue {
         return JSValue(std::make_shared<JSArray>(args));
     });
     
     // Set up Object constructor
-    auto objectConstructor = std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue) {
+    auto objectConstructor = std::make_shared<JSFunction>([](const std::vector<JSValue>& args, JSValue thisValue) -> JSValue {
         return JSValue(std::make_shared<JSObject>());
     });
     
@@ -87,7 +94,7 @@ bool JSEngine::initialize() {
     m_interpreter->defineGlobalVariable("Object", JSValue(objectConstructor));
     
     // Add standard global functions
-    addGlobalFunction("parseInt", [](const std::vector<JSValue>& args, JSValue) {
+    addGlobalFunction("parseInt", [](const std::vector<JSValue>& args, JSValue thisValue) -> JSValue {
         if (args.empty()) return JSValue(std::numeric_limits<double>::quiet_NaN());
         std::string str = args[0].toString();
         int radix = args.size() > 1 ? static_cast<int>(args[1].toNumber()) : 10;
@@ -99,7 +106,7 @@ bool JSEngine::initialize() {
         }
     });
     
-    addGlobalFunction("parseFloat", [](const std::vector<JSValue>& args, JSValue) {
+    addGlobalFunction("parseFloat", [](const std::vector<JSValue>& args, JSValue thisValue) -> JSValue {
         if (args.empty()) return JSValue(std::numeric_limits<double>::quiet_NaN());
         std::string str = args[0].toString();
         
@@ -110,13 +117,13 @@ bool JSEngine::initialize() {
         }
     });
     
-    addGlobalFunction("isNaN", [](const std::vector<JSValue>& args, JSValue) {
+    addGlobalFunction("isNaN", [](const std::vector<JSValue>& args, JSValue thisValue) -> JSValue {
         if (args.empty()) return JSValue(true);
         double num = args[0].toNumber();
         return JSValue(std::isnan(num));
     });
     
-    addGlobalFunction("isFinite", [](const std::vector<JSValue>& args, JSValue) {
+    addGlobalFunction("isFinite", [](const std::vector<JSValue>& args, JSValue thisValue) -> JSValue {
         if (args.empty()) return JSValue(false);
         double num = args[0].toNumber();
         return JSValue(std::isfinite(num));
@@ -136,7 +143,8 @@ bool JSEngine::executeScript(const std::string& script, std::string& result, std
     }
 }
 
-void JSEngine::addGlobalFunction(const std::string& name, JSFunction::NativeFunction func) {
+void JSEngine::addGlobalFunction(const std::string& name, 
+                               std::function<JSValue(const std::vector<JSValue>&, JSValue)> func) {
     m_interpreter->defineGlobalFunction(name, func);
 }
 
