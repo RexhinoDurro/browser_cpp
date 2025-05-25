@@ -179,7 +179,7 @@ void Renderer::renderCustomDisplayList(const DisplayList& displayList, CustomRen
     // Clear the context
     ctx->beginPath();
     ctx->rect(0, 0, ctx->getWindowWidth(), ctx->getWindowHeight());
-    ctx->setFillPaint(Paint(rendering::Color(255, 255, 255))); // White
+    ctx->setFillPaint(Paint(Color(255, 255, 255))); // White
     ctx->fill();
     
     // Render each display item

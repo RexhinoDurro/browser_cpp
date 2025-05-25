@@ -48,6 +48,10 @@ public:
     
     virtual void paint(RenderingContext* context) override;
     
+    // Accessor methods
+    const layout::Rect& rect() const { return m_rect; }
+    const Color& color() const { return m_color; }
+    
 private:
     layout::Rect m_rect;
     Color m_color;
@@ -61,6 +65,14 @@ public:
     virtual ~BorderDisplayItem();
     
     virtual void paint(RenderingContext* context) override;
+    
+    // Accessor methods
+    const layout::Rect& rect() const { return m_rect; }
+    const Color& color() const { return m_color; }
+    float topWidth() const { return m_topWidth; }
+    float rightWidth() const { return m_rightWidth; }
+    float bottomWidth() const { return m_bottomWidth; }
+    float leftWidth() const { return m_leftWidth; }
     
 private:
     layout::Rect m_rect;
@@ -80,6 +92,14 @@ public:
     
     virtual void paint(RenderingContext* context) override;
     
+    // Accessor methods
+    const std::string& text() const { return m_text; }
+    float x() const { return m_x; }
+    float y() const { return m_y; }
+    const Color& color() const { return m_color; }
+    const std::string& fontFamily() const { return m_fontFamily; }
+    float fontSize() const { return m_fontSize; }
+    
 private:
     std::string m_text;
     float m_x;
@@ -97,6 +117,10 @@ public:
     
     virtual void paint(RenderingContext* context) override;
     
+    // Accessor methods
+    const std::string& url() const { return m_url; }
+    const layout::Rect& rect() const { return m_rect; }
+    
 private:
     std::string m_url;
     layout::Rect m_rect;
@@ -110,6 +134,11 @@ public:
     virtual ~RectDisplayItem();
     
     virtual void paint(RenderingContext* context) override;
+    
+    // Accessor methods
+    const layout::Rect& rect() const { return m_rect; }
+    const Color& color() const { return m_color; }
+    bool filled() const { return m_fill; }
     
 private:
     layout::Rect m_rect;
@@ -125,6 +154,10 @@ public:
     
     virtual void paint(RenderingContext* context) override;
     
+    // Accessor methods
+    float dx() const { return m_dx; }
+    float dy() const { return m_dy; }
+    
 private:
     float m_dx;
     float m_dy;
@@ -137,6 +170,9 @@ public:
     virtual ~ClipDisplayItem();
     
     virtual void paint(RenderingContext* context) override;
+    
+    // Accessor methods
+    const layout::Rect& rect() const { return m_rect; }
     
 private:
     layout::Rect m_rect;
@@ -185,6 +221,7 @@ public:
     // Allow moving
     PaintContext(PaintContext&&) = default;
     PaintContext& operator=(PaintContext&&) = default;
+    
     // Get the display list
     DisplayList& displayList() { return m_displayList; }
     

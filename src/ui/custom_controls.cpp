@@ -152,18 +152,26 @@ void Button::draw(rendering::CustomRenderContext* ctx) {
     // Draw button background
     ctx->beginPath();
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
-    ctx->setFillPaint(Paint(bgColor));
+    
+    rendering::Paint fillPaint;
+    fillPaint.setColor(bgColor);
+    ctx->setFillPaint(fillPaint);
     ctx->fill();
     
     // Draw button border
     ctx->beginPath();
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
-    ctx->setStrokePaint(Paint(borderColor));
+    
+    rendering::Paint strokePaint;
+    strokePaint.setColor(borderColor);
+    ctx->setStrokePaint(strokePaint);
     ctx->setStrokeWidth(1.0f);
     ctx->stroke();
     
     // Draw button text
-    ctx->setFillPaint(Paint(textColor));
+    rendering::Paint textPaint;
+    textPaint.setColor(textColor);
+    ctx->setFillPaint(textPaint);
     ctx->setFont(rendering::Font("sans", 14.0f));
     
     // Measure text
@@ -272,13 +280,19 @@ void TextInput::draw(rendering::CustomRenderContext* ctx) {
     // Draw text input background
     ctx->beginPath();
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
-    ctx->setFillPaint(Paint(bgColor));
+    
+    rendering::Paint bgPaint;
+    bgPaint.setColor(bgColor);
+    ctx->setFillPaint(bgPaint);
     ctx->fill();
     
     // Draw text input border
     ctx->beginPath();
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
-    ctx->setStrokePaint(Paint(borderColor));
+    
+    rendering::Paint borderPaint;
+    borderPaint.setColor(borderColor);
+    ctx->setStrokePaint(borderPaint);
     ctx->setStrokeWidth(1.0f);
     ctx->stroke();
     
@@ -292,12 +306,16 @@ void TextInput::draw(rendering::CustomRenderContext* ctx) {
     if (m_text.empty()) {
         if (!m_focused) {
             // Draw placeholder
-            ctx->setFillPaint(Paint(placeholderColor));
+            rendering::Paint placeholderPaint;
+            placeholderPaint.setColor(placeholderColor);
+            ctx->setFillPaint(placeholderPaint);
             ctx->text(m_x + textPadding, textY, m_placeholder);
         }
     } else {
         // Draw text
-        ctx->setFillPaint(Paint(textColor));
+        rendering::Paint textPaint;
+        textPaint.setColor(textColor);
+        ctx->setFillPaint(textPaint);
         ctx->text(m_x + textPadding, textY, m_text);
     }
     
@@ -318,7 +336,11 @@ void TextInput::draw(rendering::CustomRenderContext* ctx) {
             // Draw selection background
             ctx->beginPath();
             ctx->rect(selX, m_y + 2.0f, selWidth, m_height - 4.0f);
-            ctx->setFillPaint(Paint(rendering::Color(100, 100, 255, 0.5f)));
+            
+            rendering::Color selColor(100, 100, 255, 0.5f);
+            rendering::Paint selPaint;
+            selPaint.setColor(selColor);
+            ctx->setFillPaint(selPaint);
             ctx->fill();
         }
         
@@ -326,7 +348,10 @@ void TextInput::draw(rendering::CustomRenderContext* ctx) {
         ctx->beginPath();
         ctx->moveTo(cursorX, m_y + 4.0f);
         ctx->lineTo(cursorX, m_y + m_height - 4.0f);
-        ctx->setStrokePaint(Paint(rendering::Color(0, 0, 0)));
+        
+        rendering::Paint cursorPaint;
+        cursorPaint.setColor(rendering::Color(0, 0, 0));
+        ctx->setStrokePaint(cursorPaint);
         ctx->setStrokeWidth(1.0f);
         ctx->stroke();
     }
@@ -449,3 +474,47 @@ void TextInput::deletePreviousChar() {
     if (m_textChangeHandler) {
         m_textChangeHandler(m_text);
     }
+}
+
+void TextInput::deleteNextChar() {
+    if (m_cursorPos != m_selectionStart) {
+        // Delete selection
+        size_t start = std::min(m_cursorPos, m_selectionStart);
+        size_t end = std::max(m_cursorPos, m_selectionStart);
+        m_text.erase(start, end - start);
+        m_cursorPos = start;
+        m_selectionStart = m_cursorPos;
+    } else if (m_cursorPos < m_text.length()) {
+        // Delete next character
+        m_text.erase(m_cursorPos, 1);
+    }
+    
+    // Notify change handler
+    if (m_textChangeHandler) {
+        m_textChangeHandler(m_text);
+    }
+}
+
+void TextInput::insertText(const std::string& text) {
+    if (m_cursorPos != m_selectionStart) {
+        // Replace selection
+        size_t start = std::min(m_cursorPos, m_selectionStart);
+        size_t end = std::max(m_cursorPos, m_selectionStart);
+        m_text.replace(start, end - start, text);
+        m_cursorPos = start + text.length();
+    } else {
+        // Insert at cursor
+        m_text.insert(m_cursorPos, text);
+        m_cursorPos += text.length();
+    }
+    
+    m_selectionStart = m_cursorPos;
+    
+    // Notify change handler
+    if (m_textChangeHandler) {
+        m_textChangeHandler(m_text);
+    }
+}
+
+} // namespace ui
+} // namespace browser

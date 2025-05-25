@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <map>
+#include "../css/style_resolver.h" // Added for access to css::Value
 
 namespace browser {
 namespace rendering {
@@ -37,6 +38,61 @@ public:
             (rgb >> 8) & 0xFF,
             rgb & 0xFF
         );
+    }
+    
+    // Parse a CSS color value
+    static Color fromCssColor(const css::Value& value) {
+        std::string colorStr = value.stringValue();
+        
+        // Handle named colors
+        if (colorStr == "black") return Color(0, 0, 0);
+        if (colorStr == "white") return Color(255, 255, 255);
+        if (colorStr == "red") return Color(255, 0, 0);
+        if (colorStr == "green") return Color(0, 128, 0);
+        if (colorStr == "blue") return Color(0, 0, 255);
+        if (colorStr == "yellow") return Color(255, 255, 0);
+        if (colorStr == "purple") return Color(128, 0, 128);
+        if (colorStr == "gray" || colorStr == "grey") return Color(128, 128, 128);
+        if (colorStr == "transparent") return Color(0, 0, 0, 0);
+        
+        // Handle hex colors
+        if (colorStr.size() >= 7 && colorStr[0] == '#') {
+            int r = std::stoi(colorStr.substr(1, 2), nullptr, 16);
+            int g = std::stoi(colorStr.substr(3, 2), nullptr, 16);
+            int b = std::stoi(colorStr.substr(5, 2), nullptr, 16);
+            return Color(r, g, b);
+        } else if (colorStr.size() >= 4 && colorStr[0] == '#') {
+            int r = std::stoi(colorStr.substr(1, 1) + colorStr.substr(1, 1), nullptr, 16);
+            int g = std::stoi(colorStr.substr(2, 1) + colorStr.substr(2, 1), nullptr, 16);
+            int b = std::stoi(colorStr.substr(3, 1) + colorStr.substr(3, 1), nullptr, 16);
+            return Color(r, g, b);
+        }
+        
+        // Handle rgb/rgba
+        if (colorStr.substr(0, 4) == "rgb(") {
+            // This is a very simplified RGB parser
+            // A real implementation would handle more formats and error conditions
+            std::string values = colorStr.substr(4, colorStr.length() - 5);
+            std::stringstream ss(values);
+            int r, g, b;
+            char comma;
+            ss >> r >> comma >> g >> comma >> b;
+            return Color(r, g, b);
+        }
+        
+        if (colorStr.substr(0, 5) == "rgba(") {
+            // This is a very simplified RGBA parser
+            std::string values = colorStr.substr(5, colorStr.length() - 6);
+            std::stringstream ss(values);
+            int r, g, b;
+            float a;
+            char comma;
+            ss >> r >> comma >> g >> comma >> b >> comma >> a;
+            return Color(r, g, b, a);
+        }
+        
+        // Default to black
+        return Color(0, 0, 0);
     }
     
     unsigned int toRGBA() const {
@@ -76,6 +132,9 @@ public:
     // Create image pattern paint
     static Paint imagePattern(const Image& image, float x, float y, float width, float height,
                             float angle, float alpha);
+    
+    // Setter for color (added to support easier construction)
+    void setColor(const Color& c);
     
     PaintType type;
     Color color;
@@ -252,6 +311,10 @@ public:
     // Access to internal state
     const std::vector<Path>& paths() const { return m_paths; }
     const Path& currentPath() const { return m_currentPath; }
+    
+    // Get window dimensions
+    int getWindowWidth() const { return m_width; }
+    int getWindowHeight() const { return m_height; }
     
 private:
     // Transform matrix (3x3)
