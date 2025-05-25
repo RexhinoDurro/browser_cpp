@@ -1,16 +1,17 @@
-#ifndef BROWSER_UI_CONTROLS_H
-#define BROWSER_UI_CONTROLS_H
+// src/ui/custom_controls.h
+#ifndef BROWSER_UI_CUSTOM_CONTROLS_H
+#define BROWSER_UI_CUSTOM_CONTROLS_H
 
 #include <string>
 #include <functional>
 #include <memory>
 #include "window.h"
-
-// Forward declarations for UI toolkit
-struct NVGcontext;
+#include "../rendering/custom_renderer.h"
 
 namespace browser {
 namespace ui {
+
+class BrowserWindow; // Forward declaration for browser window
 
 // Base control class
 class Control {
@@ -33,8 +34,12 @@ public:
     void setEnabled(bool enabled);
     bool isEnabled() const;
     
+    // Focus state
+    void setFocus(bool focus);
+    bool hasFocus() const;
+    
     // Drawing and event handling
-    virtual void draw(NVGcontext* ctx) = 0;
+    virtual void draw(rendering::CustomRenderContext* ctx) = 0;
     virtual bool handleMouseMove(int x, int y);
     virtual bool handleMouseButton(int button, int action, int mods);
     virtual bool handleKeyInput(int key, int scancode, int action, int mods);
@@ -65,7 +70,7 @@ public:
     void setClickHandler(std::function<void()> handler);
     
     // Drawing and event handling
-    virtual void draw(NVGcontext* ctx) override;
+    virtual void draw(rendering::CustomRenderContext* ctx) override;
     virtual bool handleMouseButton(int button, int action, int mods) override;
     
 private:
@@ -93,7 +98,7 @@ public:
     void setTextChangeHandler(std::function<void(const std::string&)> handler);
     
     // Drawing and event handling
-    virtual void draw(NVGcontext* ctx) override;
+    virtual void draw(rendering::CustomRenderContext* ctx) override;
     virtual bool handleKeyInput(int key, int scancode, int action, int mods) override;
     virtual bool handleMouseButton(int button, int action, int mods) override;
     
@@ -129,7 +134,7 @@ public:
     bool isIndeterminate() const;
     
     // Drawing
-    virtual void draw(NVGcontext* ctx) override;
+    virtual void draw(rendering::CustomRenderContext* ctx) override;
     
 private:
     float m_value;
@@ -147,7 +152,7 @@ public:
     void addControl(std::shared_ptr<Control> control);
     
     // Drawing and event handling
-    virtual void draw(NVGcontext* ctx) override;
+    virtual void draw(rendering::CustomRenderContext* ctx) override;
     virtual bool handleMouseMove(int x, int y) override;
     virtual bool handleMouseButton(int button, int action, int mods) override;
     virtual bool handleKeyInput(int key, int scancode, int action, int mods) override;
@@ -166,7 +171,7 @@ public:
     bool initialize();
     
     // Draw controls
-    void draw();
+    void draw(rendering::CustomRenderContext* ctx);
     
     // Process input events
     bool handleMouseMove(int x, int y);
@@ -185,7 +190,7 @@ public:
     
 private:
     BrowserWindow* m_window;
-    NVGcontext* m_nvgContext;
+    rendering::CustomRenderContext* m_renderContext;
     
     // UI layout
     int m_toolbarHeight;
@@ -199,8 +204,8 @@ private:
     std::shared_ptr<TextInput> m_addressBar;
     std::shared_ptr<ProgressBar> m_progressBar;
     
-    // Initialize NanoVG
-    bool initializeNanoVG();
+    // Initialize renderer
+    bool initializeRenderer();
     
     // Layout controls
     void layoutControls();
@@ -209,4 +214,4 @@ private:
 } // namespace ui
 } // namespace browser
 
-#endif // BROWSER_UI_CONTROLS_H
+#endif // BROWSER_UI_CUSTOM_CONTROLS_H
