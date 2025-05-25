@@ -49,7 +49,7 @@ public:
     void setBrowser(std::shared_ptr<browser::Browser> browser);
     std::shared_ptr<browser::Browser> getBrowser() const;
     
-    // Renderer access
+    // Renderer access - add this method to fix the compilation error
     void setRenderer(std::shared_ptr<rendering::Renderer> renderer) {
         m_renderer = renderer;
     }

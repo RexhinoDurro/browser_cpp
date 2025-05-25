@@ -42,6 +42,7 @@ inline void initializeRenderer(ui::BrowserWindow& window) {
     auto paintSystem = createPaintSystem();
     renderer->setPaintSystem(paintSystem);
     
+    // Fix: Use the setter method properly with the correct namespace
     window.setRenderer(renderer);
 }
 

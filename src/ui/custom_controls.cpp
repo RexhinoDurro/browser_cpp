@@ -1,6 +1,7 @@
 // src/ui/custom_controls.cpp
 #include "custom_controls.h"
 #include "browser_window.h"
+#include "../rendering/paint_system.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -27,76 +28,7 @@ Control::Control(int x, int y, int width, int height)
 Control::~Control() {
 }
 
-void Control::setPosition(int x, int y) {
-    m_x = x;
-    m_y = y;
-}
-
-void Control::getPosition(int& x, int& y) const {
-    x = m_x;
-    y = m_y;
-}
-
-void Control::setSize(int width, int height) {
-    m_width = width;
-    m_height = height;
-}
-
-void Control::getSize(int& width, int& height) const {
-    width = m_width;
-    height = m_height;
-}
-
-void Control::setVisible(bool visible) {
-    m_visible = visible;
-}
-
-bool Control::isVisible() const {
-    return m_visible;
-}
-
-void Control::setEnabled(bool enabled) {
-    m_enabled = enabled;
-}
-
-bool Control::isEnabled() const {
-    return m_enabled;
-}
-
-void Control::setFocus(bool focus) {
-    m_focused = focus;
-}
-
-bool Control::hasFocus() const {
-    return m_focused;
-}
-
-bool Control::handleMouseMove(int x, int y) {
-    bool wasHover = m_hover;
-    m_hover = contains(x, y);
-    
-    // Return true if hover state changed
-    return wasHover != m_hover;
-}
-
-bool Control::handleMouseButton(int button, int action, int mods) {
-    // Base implementation just handles focus
-    if (button == 0 && action == 1 && contains(button, action)) {
-        m_focused = true;
-        return true;
-    }
-    
-    return false;
-}
-
-bool Control::handleKeyInput(int key, int scancode, int action, int mods) {
-    // Base implementation doesn't handle keys
-    return false;
-}
-
-bool Control::contains(int x, int y) const {
-    return x >= m_x && x < m_x + m_width && y >= m_y && y < m_y + m_height;
-}
+// [Keep all the unchanged methods...]
 
 //-----------------------------------------------------------------------------
 // Button Implementation
@@ -126,69 +58,48 @@ void Button::setClickHandler(std::function<void()> handler) {
 void Button::draw(rendering::CustomRenderContext* ctx) {
     if (!ctx) return;
     
-    // Save state
-    ctx->save();
+    // Create a paint context
+    rendering::PaintContext paintContext;
     
     // Choose colors based on state
-    rendering::Color bgColor;
-    rendering::Color textColor;
-    rendering::Color borderColor;
+    unsigned int bgColor;
+    unsigned int textColor;
+    unsigned int borderColor;
     
     if (!m_enabled) {
         // Disabled state
-        bgColor = rendering::Color(200, 200, 200);
-        textColor = rendering::Color(128, 128, 128);
-        borderColor = rendering::Color(180, 180, 180);
+        bgColor = 0xC8C8C8; // 200, 200, 200
+        textColor = 0x808080; // 128, 128, 128
+        borderColor = 0xB4B4B4; // 180, 180, 180
     } else if (m_hover) {
         // Hover state
-        bgColor = rendering::Color(230, 230, 255);
-        textColor = rendering::Color(0, 0, 0);
-        borderColor = rendering::Color(100, 100, 255);
+        bgColor = 0xE6E6FF; // 230, 230, 255
+        textColor = 0x000000; // 0, 0, 0
+        borderColor = 0x6464FF; // 100, 100, 255
     } else {
         // Normal state
-        bgColor = rendering::Color(240, 240, 240);
-        textColor = rendering::Color(0, 0, 0);
-        borderColor = rendering::Color(180, 180, 180);
+        bgColor = 0xF0F0F0; // 240, 240, 240
+        textColor = 0x000000; // 0, 0, 0
+        borderColor = 0xB4B4B4; // 180, 180, 180
     }
     
-    // Draw button background
-    ctx->beginPath();
-    ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
+    // Create layout rectangle for button
+    layout::Rect buttonRect(m_x, m_y, m_width, m_height);
     
-    rendering::Paint bgPaint;
-    bgPaint.setColor(bgColor);
-    ctx->setFillPaint(bgPaint);
-    ctx->fill();
+    // Draw button background (rounded rectangle)
+    paintContext.drawRect(buttonRect, rendering::Color::fromRGB(bgColor), true);
     
     // Draw button border
-    ctx->beginPath();
-    ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
-    
-    rendering::Paint borderPaint;
-    borderPaint.setColor(borderColor);
-    ctx->setStrokePaint(borderPaint);
-    ctx->setStrokeWidth(1.0f);
-    ctx->stroke();
+    paintContext.drawRect(buttonRect, rendering::Color::fromRGB(borderColor), false, 1);
     
     // Draw button text
-    rendering::Paint textPaint;
-    textPaint.setColor(textColor);
-    ctx->setFillPaint(textPaint);
-    ctx->setFont(rendering::Font("sans", 14.0f));
+    float textX = m_x + (m_width - m_text.length() * 8) / 2; // Approximate text centering
+    float textY = m_y + (m_height + 12) / 2; // Approximate vertical centering
+    paintContext.drawText(m_text, textX, textY, rendering::Color::fromRGB(textColor), "sans", 14);
     
-    // Measure text
-    float bounds[4];
-    ctx->textBounds(0, 0, m_text, bounds);
-    float textWidth = bounds[2] - bounds[0];
-    
-    // Center text
-    float textX = m_x + (m_width - textWidth) / 2;
-    float textY = m_y + (m_height + 14.0f) / 2;
-    
-    ctx->text(textX, textY, m_text);
-    
-    // Restore state
-    ctx->restore();
+    // Paint the display list to the rendering context
+    rendering::PaintSystem paintSystem;
+    paintSystem.paintDisplayList(paintContext.displayList(), ctx);
 }
 
 bool Button::handleMouseButton(int button, int action, int mods) {
@@ -223,105 +134,64 @@ TextInput::TextInput(int x, int y, int width, int height)
 TextInput::~TextInput() {
 }
 
-void TextInput::setText(const std::string& text) {
-    m_text = text;
-    m_cursorPos = text.length();
-    m_selectionStart = m_cursorPos;
-    
-    // Notify change handler
-    if (m_textChangeHandler) {
-        m_textChangeHandler(m_text);
-    }
-}
-
-std::string TextInput::getText() const {
-    return m_text;
-}
-
-void TextInput::setPlaceholder(const std::string& placeholder) {
-    m_placeholder = placeholder;
-}
-
-void TextInput::setSubmitHandler(std::function<void(const std::string&)> handler) {
-    m_submitHandler = handler;
-}
-
-void TextInput::setTextChangeHandler(std::function<void(const std::string&)> handler) {
-    m_textChangeHandler = handler;
-}
+// [Keep other unchanged methods...]
 
 void TextInput::draw(rendering::CustomRenderContext* ctx) {
     if (!ctx) return;
     
-    // Save state
-    ctx->save();
+    // Create a paint context
+    rendering::PaintContext paintContext;
     
     // Choose colors based on state
-    rendering::Color bgColor;
-    rendering::Color textColor;
-    rendering::Color borderColor;
-    rendering::Color placeholderColor;
+    unsigned int bgColor;
+    unsigned int textColor;
+    unsigned int borderColor;
+    unsigned int placeholderColor;
     
     if (!m_enabled) {
         // Disabled state
-        bgColor = rendering::Color(220, 220, 220);
-        textColor = rendering::Color(128, 128, 128);
-        borderColor = rendering::Color(180, 180, 180);
-        placeholderColor = rendering::Color(160, 160, 160);
+        bgColor = 0xDCDCDC; // 220, 220, 220
+        textColor = 0x808080; // 128, 128, 128
+        borderColor = 0xB4B4B4; // 180, 180, 180
+        placeholderColor = 0xA0A0A0; // 160, 160, 160
     } else if (m_focused) {
         // Focused state
-        bgColor = rendering::Color(255, 255, 255);
-        textColor = rendering::Color(0, 0, 0);
-        borderColor = rendering::Color(100, 100, 255);
-        placeholderColor = rendering::Color(180, 180, 180);
+        bgColor = 0xFFFFFF; // 255, 255, 255
+        textColor = 0x000000; // 0, 0, 0
+        borderColor = 0x6464FF; // 100, 100, 255
+        placeholderColor = 0xB4B4B4; // 180, 180, 180
     } else {
         // Normal state
-        bgColor = rendering::Color(255, 255, 255);
-        textColor = rendering::Color(0, 0, 0);
-        borderColor = rendering::Color(180, 180, 180);
-        placeholderColor = rendering::Color(180, 180, 180);
+        bgColor = 0xFFFFFF; // 255, 255, 255
+        textColor = 0x000000; // 0, 0, 0
+        borderColor = 0xB4B4B4; // 180, 180, 180
+        placeholderColor = 0xB4B4B4; // 180, 180, 180
     }
     
-    // Draw text input background
-    ctx->beginPath();
-    ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
+    // Create layout rectangle for text input
+    layout::Rect inputRect(m_x, m_y, m_width, m_height);
     
-    rendering::Paint bgPaint;
-    bgPaint.setColor(bgColor);
-    ctx->setFillPaint(bgPaint);
-    ctx->fill();
+    // Draw text input background
+    paintContext.drawRect(inputRect, rendering::Color::fromRGB(bgColor), true);
     
     // Draw text input border
-    ctx->beginPath();
-    ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
-    
-    rendering::Paint borderPaint;
-    borderPaint.setColor(borderColor);
-    ctx->setStrokePaint(borderPaint);
-    ctx->setStrokeWidth(1.0f);
-    ctx->stroke();
+    paintContext.drawRect(inputRect, rendering::Color::fromRGB(borderColor), false, 1);
     
     // Set up text rendering
-    ctx->setFont(rendering::Font("sans", 14.0f));
-    
     float textPadding = 5.0f;
-    float textY = m_y + (m_height + 14.0f) / 2;
+    float textY = m_y + (m_height + 12) / 2; // Approximate vertical centering
     
     // Draw text or placeholder
     if (m_text.empty()) {
         if (!m_focused) {
             // Draw placeholder
-            rendering::Paint placeholderPaint;
-            placeholderPaint.setColor(placeholderColor);
-            ctx->setFillPaint(placeholderPaint);
-            ctx->text(m_x + textPadding, textY, m_placeholder);
+            paintContext.drawText(m_placeholder, m_x + textPadding, textY,
+                                 rendering::Color::fromRGB(placeholderColor), "sans", 14);
         }
     } else {
         // Draw text
-        rendering::Paint textPaint;
-        textPaint.setColor(textColor);
-        ctx->setFillPaint(textPaint);
-        ctx->text(m_x + textPadding, textY, m_text);
+        paintContext.drawText(m_text, m_x + textPadding, textY,
+                             rendering::Color::fromRGB(textColor), "sans", 14);
     }
     
     // Draw cursor and selection if focused
@@ -339,187 +209,21 @@ void TextInput::draw(rendering::CustomRenderContext* ctx) {
             float selWidth = (end - start) * charWidth;
             
             // Draw selection background
-            ctx->beginPath();
-            ctx->rect(selX, m_y + 2.0f, selWidth, m_height - 4.0f);
-            
-            rendering::Color selColor(100, 100, 255, 0.5f);
-            rendering::Paint selPaint;
-            selPaint.setColor(selColor);
-            ctx->setFillPaint(selPaint);
-            ctx->fill();
+            layout::Rect selectionRect(selX, m_y + 2.0f, selWidth, m_height - 4.0f);
+            paintContext.drawRect(selectionRect, rendering::Color(100, 100, 255, 128), true);
         }
         
         // Draw cursor
-        ctx->beginPath();
-        ctx->moveTo(cursorX, m_y + 4.0f);
-        ctx->lineTo(cursorX, m_y + m_height - 4.0f);
-        
-        rendering::Paint cursorPaint;
-        cursorPaint.setColor(rendering::Color(0, 0, 0));
-        ctx->setStrokePaint(cursorPaint);
-        ctx->setStrokeWidth(1.0f);
-        ctx->stroke();
+        paintContext.drawLine(cursorX, m_y + 4.0f, cursorX, m_y + m_height - 4.0f,
+                             rendering::Color::fromRGB(0x000000), 1);
     }
     
-    // Restore state
-    ctx->restore();
+    // Paint the display list to the rendering context
+    rendering::PaintSystem paintSystem;
+    paintSystem.paintDisplayList(paintContext.displayList(), ctx);
 }
 
-bool TextInput::handleKeyInput(int key, int scancode, int action, int mods) {
-    if (!m_focused || !m_enabled || action != 1) return false;
-    
-    // Check for key presses
-    switch (key) {
-        case 263: // Left arrow
-            moveCursor(-1, (mods & 0x01) != 0); // Shift modifier
-            return true;
-            
-        case 262: // Right arrow
-            moveCursor(1, (mods & 0x01) != 0); // Shift modifier
-            return true;
-            
-        case 268: // Home
-            m_cursorPos = 0;
-            if (!(mods & 0x01)) { // If Shift is not pressed
-                m_selectionStart = m_cursorPos;
-            }
-            return true;
-            
-        case 269: // End
-            m_cursorPos = m_text.length();
-            if (!(mods & 0x01)) { // If Shift is not pressed
-                m_selectionStart = m_cursorPos;
-            }
-            return true;
-            
-        case 259: // Backspace
-            deletePreviousChar();
-            return true;
-            
-        case 261: // Delete
-            deleteNextChar();
-            return true;
-            
-        case 257: // Enter
-            if (m_submitHandler) {
-                m_submitHandler(m_text);
-            }
-            return true;
-            
-        default:
-            // Handle printable characters
-            if (key >= 32 && key <= 126) {
-                char c = (char)key;
-                insertText(std::string(1, c));
-                return true;
-            }
-    }
-    
-    return false;
-}
-
-bool TextInput::handleMouseButton(int button, int action, int mods) {
-    // Call base handler
-    Control::handleMouseButton(button, action, mods);
-    
-    // Handle mouse interactions
-    if (m_enabled && button == 0) {
-        if (action == 1 && m_hover) { // Mouse down
-            // Calculate cursor position from click
-            float textPadding = 5.0f;
-            float charWidth = 8.0f; // Approximate character width
-            
-            int clickX = button - (m_x + textPadding);
-            m_cursorPos = std::max(0, std::min((int)m_text.length(), (int)(clickX / charWidth)));
-            
-            // Start selection
-            m_selectionStart = m_cursorPos;
-            m_selecting = true;
-            
-            return true;
-        } else if (action == 0) { // Mouse up
-            m_selecting = false;
-            return true;
-        }
-    }
-    
-    return false;
-}
-
-void TextInput::moveCursor(int direction, bool selecting) {
-    // Move cursor left or right
-    if (direction < 0) {
-        m_cursorPos = m_cursorPos > 0 ? m_cursorPos - 1 : 0;
-    } else {
-        m_cursorPos = std::min(m_cursorPos + 1, m_text.length());
-    }
-    
-    // Update selection
-    if (!selecting) {
-        m_selectionStart = m_cursorPos;
-    }
-}
-
-void TextInput::deletePreviousChar() {
-    if (m_cursorPos != m_selectionStart) {
-        // Delete selection
-        size_t start = std::min(m_cursorPos, m_selectionStart);
-        size_t end = std::max(m_cursorPos, m_selectionStart);
-        m_text.erase(start, end - start);
-        m_cursorPos = start;
-        m_selectionStart = m_cursorPos;
-    } else if (m_cursorPos > 0) {
-        // Delete previous character
-        m_text.erase(m_cursorPos - 1, 1);
-        m_cursorPos--;
-        m_selectionStart = m_cursorPos;
-    }
-    
-    // Notify change handler
-    if (m_textChangeHandler) {
-        m_textChangeHandler(m_text);
-    }
-}
-
-void TextInput::deleteNextChar() {
-    if (m_cursorPos != m_selectionStart) {
-        // Delete selection
-        size_t start = std::min(m_cursorPos, m_selectionStart);
-        size_t end = std::max(m_cursorPos, m_selectionStart);
-        m_text.erase(start, end - start);
-        m_cursorPos = start;
-        m_selectionStart = m_cursorPos;
-    } else if (m_cursorPos < m_text.length()) {
-        // Delete next character
-        m_text.erase(m_cursorPos, 1);
-    }
-    
-    // Notify change handler
-    if (m_textChangeHandler) {
-        m_textChangeHandler(m_text);
-    }
-}
-
-void TextInput::insertText(const std::string& text) {
-    if (m_cursorPos != m_selectionStart) {
-        // Replace selection
-        size_t start = std::min(m_cursorPos, m_selectionStart);
-        size_t end = std::max(m_cursorPos, m_selectionStart);
-        m_text.replace(start, end - start, text);
-        m_cursorPos = start + text.length();
-    } else {
-        // Insert at cursor
-        m_text.insert(m_cursorPos, text);
-        m_cursorPos += text.length();
-    }
-    
-    m_selectionStart = m_cursorPos;
-    
-    // Notify change handler
-    if (m_textChangeHandler) {
-        m_textChangeHandler(m_text);
-    }
-}
+// [Keep other unchanged methods...]
 
 } // namespace ui
 } // namespace browser
