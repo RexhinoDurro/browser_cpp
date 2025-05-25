@@ -22,15 +22,17 @@ namespace ColorHelper {
         return rendering::Color(r, g, b, a);
     }
     
-    // Use the constructor directly in setColor
+    // Avoid using assignment operator by setting fields directly
     inline void setPaintColor(rendering::Paint& paint, unsigned char r, unsigned char g, unsigned char b, float a = 1.0f) {
-        rendering::Color color(r, g, b, a);
         paint.type = rendering::PaintType::COLOR;
-        paint.color = color;
-        // Directly set the fields instead of using setColor method
-        // This bypasses the problematic conversion
+        // Set color components directly instead of creating a temporary Color object
+        paint.color.r = r;
+        paint.color.g = g;
+        paint.color.b = b;
+        paint.color.a = a;
     }
 }
+
 
 //-----------------------------------------------------------------------------
 // Control Implementation
