@@ -130,7 +130,9 @@ void Button::draw(rendering::CustomRenderContext* ctx) {
     ctx->save();
     
     // Choose colors based on state
-    rendering::Color bgColor, textColor, borderColor;
+    rendering::Color bgColor;
+    rendering::Color textColor;
+    rendering::Color borderColor;
     
     if (!m_enabled) {
         // Disabled state
@@ -153,18 +155,18 @@ void Button::draw(rendering::CustomRenderContext* ctx) {
     ctx->beginPath();
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
     
-    rendering::Paint fillPaint;
-    fillPaint.setColor(bgColor);
-    ctx->setFillPaint(fillPaint);
+    rendering::Paint bgPaint;
+    bgPaint.setColor(bgColor);
+    ctx->setFillPaint(bgPaint);
     ctx->fill();
     
     // Draw button border
     ctx->beginPath();
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
     
-    rendering::Paint strokePaint;
-    strokePaint.setColor(borderColor);
-    ctx->setStrokePaint(strokePaint);
+    rendering::Paint borderPaint;
+    borderPaint.setColor(borderColor);
+    ctx->setStrokePaint(borderPaint);
     ctx->setStrokeWidth(1.0f);
     ctx->stroke();
     
@@ -255,7 +257,10 @@ void TextInput::draw(rendering::CustomRenderContext* ctx) {
     ctx->save();
     
     // Choose colors based on state
-    rendering::Color bgColor, textColor, borderColor, placeholderColor;
+    rendering::Color bgColor;
+    rendering::Color textColor;
+    rendering::Color borderColor;
+    rendering::Color placeholderColor;
     
     if (!m_enabled) {
         // Disabled state

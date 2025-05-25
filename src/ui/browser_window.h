@@ -49,6 +49,11 @@ public:
     void setBrowser(std::shared_ptr<browser::Browser> browser);
     std::shared_ptr<browser::Browser> getBrowser() const;
     
+    // Renderer access
+    void setRenderer(std::shared_ptr<rendering::Renderer> renderer) {
+        m_renderer = renderer;
+    }
+    
     // Event handling
     void processEvents();
     void runEventLoop();

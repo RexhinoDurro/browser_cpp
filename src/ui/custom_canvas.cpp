@@ -108,7 +108,7 @@ rendering::Paint CustomCanvas::createPaint(unsigned int color) {
     }
     
     // Create color and paint
-    const rendering::Color c(r, g, b, a / 255.0f);
+    rendering::Color c(r, g, b, a / 255.0f);
     rendering::Paint paint;
     paint.setColor(c);
     return paint;

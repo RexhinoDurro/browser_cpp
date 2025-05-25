@@ -7,7 +7,7 @@
 #include "renderer.h"
 #include "paint_system.h"
 #include <memory> // Add this for std::shared_ptr
-#include "browser_window.h" // Include the definition of BrowserWindow
+#include "../ui/browser_window.h" // Include the definition of BrowserWindow
 
 namespace browser {
 // Forward declaration for BrowserWindow

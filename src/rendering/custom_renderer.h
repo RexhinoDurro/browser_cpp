@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <map>
+#include <sstream>
 #include "../css/style_resolver.h" // Added for access to css::Value
 
 namespace browser {
