@@ -1,17 +1,32 @@
+// src/ui/window.h - Custom UI implementation without third-party dependencies
+
 #ifndef BROWSER_UI_WINDOW_H
 #define BROWSER_UI_WINDOW_H
 
 #include <string>
 #include <memory>
 #include <functional>
+#include <vector>
+#include <map>
 #include "../browser/browser.h"
 #include "../rendering/renderer.h"
 
-// Forward declarations for UI toolkit (in this case, we'll use a cross-platform approach)
-struct GLFWwindow;
-
 namespace browser {
 namespace ui {
+
+// Forward declarations
+class UIElement;
+class UIControl;
+class Canvas;
+
+// Platform-specific window handle
+#ifdef _WIN32
+typedef void* NativeWindowHandle; // HWND on Windows
+#elif defined(__APPLE__)
+typedef void* NativeWindowHandle; // NSWindow* on macOS
+#else
+typedef unsigned long NativeWindowHandle; // Window on X11
+#endif
 
 // Window configuration
 struct WindowConfig {
@@ -22,7 +37,271 @@ struct WindowConfig {
     bool maximized = false;
 };
 
-// Browser window class
+// Mouse button definitions
+enum class MouseButton {
+    Left,
+    Middle,
+    Right
+};
+
+// Mouse action definitions
+enum class MouseAction {
+    Press,
+    Release,
+    Move
+};
+
+// Key definitions
+enum class Key {
+    // Special keys
+    Backspace,
+    Tab,
+    Enter,
+    Shift,
+    Control,
+    Alt,
+    Escape,
+    Space,
+    PageUp,
+    PageDown,
+    End,
+    Home,
+    Left,
+    Up,
+    Right,
+    Down,
+    Insert,
+    Delete,
+    
+    // Function keys
+    F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
+    
+    // Alphanumeric keys (ASCII values for simplicity)
+    A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I',
+    J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R',
+    S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X', Y = 'Y', Z = 'Z',
+    
+    Num0 = '0', Num1 = '1', Num2 = '2', Num3 = '3', Num4 = '4',
+    Num5 = '5', Num6 = '6', Num7 = '7', Num8 = '8', Num9 = '9'
+};
+
+// Key action definitions
+enum class KeyAction {
+    Press,
+    Release,
+    Repeat
+};
+
+// Base window class (platform-independent interface)
+class Window {
+public:
+    Window(const WindowConfig& config);
+    virtual ~Window();
+    
+    // Pure virtual methods to be implemented by platform-specific classes
+    virtual bool create() = 0;
+    virtual void show() = 0;
+    virtual void hide() = 0;
+    virtual void close() = 0;
+    virtual bool processEvents() = 0;
+    virtual void* getNativeHandle() const = 0;
+    
+    // Common window methods
+    virtual void setTitle(const std::string& title);
+    virtual std::string getTitle() const;
+    
+    virtual void setSize(int width, int height);
+    virtual void getSize(int& width, int& height) const;
+    
+    virtual void setPosition(int x, int y);
+    virtual void getPosition(int& x, int& y) const;
+    
+    // Event callbacks
+    void setKeyCallback(std::function<void(Key, KeyAction)> callback);
+    void setMouseButtonCallback(std::function<void(MouseButton, MouseAction, int, int)> callback);
+    void setMouseMoveCallback(std::function<void(int, int)> callback);
+    void setResizeCallback(std::function<void(int, int)> callback);
+    void setCloseCallback(std::function<void()> callback);
+    
+    // UI methods
+    void addControl(std::shared_ptr<UIControl> control);
+    void removeControl(std::shared_ptr<UIControl> control);
+    
+    // Rendering
+    virtual void beginPaint() = 0;
+    virtual void endPaint() = 0;
+    virtual Canvas* getCanvas() = 0;
+    
+protected:
+    WindowConfig m_config;
+    std::vector<std::shared_ptr<UIControl>> m_controls;
+    
+    // Callback handlers
+    std::function<void(Key, KeyAction)> m_keyCallback;
+    std::function<void(MouseButton, MouseAction, int, int)> m_mouseButtonCallback;
+    std::function<void(int, int)> m_mouseMoveCallback;
+    std::function<void(int, int)> m_resizeCallback;
+    std::function<void()> m_closeCallback;
+    
+    // Protected methods for subclasses to invoke callbacks
+    void notifyKeyEvent(Key key, KeyAction action);
+    void notifyMouseButtonEvent(MouseButton button, MouseAction action, int x, int y);
+    void notifyMouseMoveEvent(int x, int y);
+    void notifyResizeEvent(int width, int height);
+    void notifyCloseEvent();
+};
+
+// Factory function to create platform-specific window implementation
+std::shared_ptr<Window> createPlatformWindow(const WindowConfig& config);
+
+// Canvas class for drawing (platform-independent interface)
+class Canvas {
+public:
+    Canvas(int width, int height);
+    virtual ~Canvas();
+    
+    // Pure virtual methods to be implemented by platform-specific classes
+    virtual void clear(unsigned int color) = 0;
+    virtual void drawLine(int x1, int y1, int x2, int y2, unsigned int color, int thickness = 1) = 0;
+    virtual void drawRect(int x, int y, int width, int height, unsigned int color, bool filled = false, int thickness = 1) = 0;
+    virtual void drawEllipse(int x, int y, int width, int height, unsigned int color, bool filled = false, int thickness = 1) = 0;
+    virtual void drawText(const std::string& text, int x, int y, unsigned int color, const std::string& fontName = "Arial", int fontSize = 12) = 0;
+    
+    // Helper methods for common operations
+    void setSize(int width, int height);
+    int width() const { return m_width; }
+    int height() const { return m_height; }
+    
+    // Color helper methods
+    static unsigned int rgb(unsigned char r, unsigned char g, unsigned char b);
+    static unsigned int rgba(unsigned char r, unsigned char g, unsigned char b, unsigned char a);
+    
+protected:
+    int m_width;
+    int m_height;
+};
+
+// Factory function to create platform-specific canvas implementation
+std::shared_ptr<Canvas> createPlatformCanvas(int width, int height);
+
+// UI element base class
+class UIElement {
+public:
+    UIElement(int x, int y, int width, int height);
+    virtual ~UIElement();
+    
+    // Position and size
+    void setPosition(int x, int y);
+    void getPosition(int& x, int& y) const;
+    
+    void setSize(int width, int height);
+    void getSize(int& width, int& height) const;
+    
+    // Visibility
+    void setVisible(bool visible);
+    bool isVisible() const;
+    
+    // Drawing
+    virtual void draw(Canvas* canvas) = 0;
+    
+    // Hit testing
+    bool contains(int x, int y) const;
+    
+protected:
+    int m_x, m_y;
+    int m_width, m_height;
+    bool m_visible;
+};
+
+// UI control base class (interactive UI element)
+class UIControl : public UIElement {
+public:
+    UIControl(int x, int y, int width, int height);
+    virtual ~UIControl();
+    
+    // Enabled state
+    void setEnabled(bool enabled);
+    bool isEnabled() const;
+    
+    // Input handling
+    virtual bool handleMouseMove(int x, int y);
+    virtual bool handleMouseButton(MouseButton button, MouseAction action, int x, int y);
+    virtual bool handleKeyInput(Key key, KeyAction action);
+    
+    // Focus
+    void setFocus(bool focused);
+    bool hasFocus() const;
+    
+protected:
+    bool m_enabled;
+    bool m_focused;
+    bool m_hover;
+};
+
+// Button control
+class Button : public UIControl {
+public:
+    Button(int x, int y, int width, int height, const std::string& text);
+    virtual ~Button();
+    
+    // Button text
+    void setText(const std::string& text);
+    std::string getText() const;
+    
+    // Click event handler
+    void setClickHandler(std::function<void()> handler);
+    
+    // Drawing and event handling
+    virtual void draw(Canvas* canvas) override;
+    virtual bool handleMouseButton(MouseButton button, MouseAction action, int x, int y) override;
+    
+private:
+    std::string m_text;
+    std::function<void()> m_clickHandler;
+};
+
+// Text input control
+class TextInput : public UIControl {
+public:
+    TextInput(int x, int y, int width, int height);
+    virtual ~TextInput();
+    
+    // Text content
+    void setText(const std::string& text);
+    std::string getText() const;
+    
+    // Set placeholder text
+    void setPlaceholder(const std::string& placeholder);
+    
+    // Submit event handler (for Enter key)
+    void setSubmitHandler(std::function<void(const std::string&)> handler);
+    
+    // Text change handler
+    void setTextChangeHandler(std::function<void(const std::string&)> handler);
+    
+    // Drawing and event handling
+    virtual void draw(Canvas* canvas) override;
+    virtual bool handleKeyInput(Key key, KeyAction action) override;
+    virtual bool handleMouseButton(MouseButton button, MouseAction action, int x, int y) override;
+    
+private:
+    std::string m_text;
+    std::string m_placeholder;
+    size_t m_cursorPos;
+    size_t m_selectionStart;
+    bool m_selecting;
+    
+    std::function<void(const std::string&)> m_submitHandler;
+    std::function<void(const std::string&)> m_textChangeHandler;
+    
+    // Helper methods
+    void moveCursor(int direction, bool selecting);
+    void deletePreviousChar();
+    void deleteNextChar();
+    void insertText(const std::string& text);
+};
+
+// Browser window class - wraps everything together
 class BrowserWindow {
 public:
     BrowserWindow(const WindowConfig& config = WindowConfig());
@@ -31,91 +310,61 @@ public:
     // Initialize the window
     bool initialize();
     
-    // Show the window
+    // Window control methods
     void show();
-    
-    // Hide the window
     void hide();
-    
-    // Close the window
     void close();
-    
-    // Check if window is open
     bool isOpen() const;
     
-    // Get window size
+    // Window properties
+    void setSize(int width, int height);
     void getSize(int& width, int& height) const;
     
-    // Set window size
-    void setSize(int width, int height);
-    
-    // Get window position
+    void setPosition(int x, int y);
     void getPosition(int& x, int& y) const;
     
-    // Set window position
-    void setPosition(int x, int y);
-    
-    // Set window title
     void setTitle(const std::string& title);
-    
-    // Get window title
     std::string getTitle() const;
     
-    // Load URL
+    // Browser navigation
     bool loadUrl(const std::string& url);
-    
-    // Navigate back
     bool goBack();
-    
-    // Navigate forward
     bool goForward();
-    
-    // Reload current page
     bool reload();
-    
-    // Stop loading
     void stopLoading();
     
-    // Set browser instance
+    // Browser access
     void setBrowser(std::shared_ptr<browser::Browser> browser);
-    
-    // Get browser instance
     std::shared_ptr<browser::Browser> getBrowser() const;
     
-    // Process window events (non-blocking)
+    // Event handling
     void processEvents();
-    
-    // Run event loop (blocking)
     void runEventLoop();
     
-    // Set URL change callback
+    // Navigation callbacks
     void setUrlChangeCallback(std::function<void(const std::string&)> callback);
-    
-    // Set title change callback
     void setTitleChangeCallback(std::function<void(const std::string&)> callback);
-    
-    // Set loading state change callback
     void setLoadingStateCallback(std::function<void(bool)> callback);
     
 private:
-    // Window configuration
-    WindowConfig m_config;
-    
-    // Browser engine instance
+    // Core components
+    std::shared_ptr<Window> m_window;
     std::shared_ptr<browser::Browser> m_browser;
-    
-    // Window handle
-    GLFWwindow* m_window;
-    
-    // Renderer for browser output
     std::shared_ptr<rendering::Renderer> m_renderer;
     std::shared_ptr<rendering::RenderTarget> m_renderTarget;
     
-    // Current URL and navigation state
+    // Navigation state
     std::string m_currentUrl;
     std::vector<std::string> m_history;
     size_t m_historyIndex;
     bool m_isLoading;
+    
+    // UI controls
+    std::shared_ptr<Button> m_backButton;
+    std::shared_ptr<Button> m_forwardButton;
+    std::shared_ptr<Button> m_reloadButton;
+    std::shared_ptr<Button> m_stopButton;
+    std::shared_ptr<TextInput> m_addressBar;
     
     // UI state
     bool m_initialized;
@@ -125,22 +374,18 @@ private:
     std::function<void(const std::string&)> m_titleChangeCallback;
     std::function<void(bool)> m_loadingStateCallback;
     
-    // Initialize UI toolkit
-    bool initializeUI();
-    
-    // Render page content
-    void renderPage();
-    
-    // Internal event handling
-    void handleKeyEvent(int key, int scancode, int action, int mods);
-    void handleMouseEvent(int button, int action, int mods);
+    // Internal event handlers
+    void handleKeyEvent(Key key, KeyAction action);
+    void handleMouseEvent(MouseButton button, MouseAction action, int x, int y);
     void handleResizeEvent(int width, int height);
+    void handleCloseEvent();
     
-    // Static callback wrappers for GLFW
-    static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
-    static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
-    static void windowSizeCallback(GLFWwindow* window, int width, int height);
-    static void windowCloseCallback(GLFWwindow* window);
+    // UI initialization
+    void initializeControls();
+    
+    // Rendering
+    void renderPage();
+    void renderLayoutBox(layout::Box* box, Canvas* canvas);
 };
 
 } // namespace ui
