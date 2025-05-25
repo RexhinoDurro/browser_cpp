@@ -345,10 +345,7 @@ bool Image::save(const std::string& filename) const {
 //-----------------------------------------------------------------------------
 // CustomRenderContext Implementation
 //-----------------------------------------------------------------------------
-void browser::rendering::Paint::setColor(Color c) {
-    type = PaintType::COLOR;
-    color = c;
-}
+
 
 CustomRenderContext::CustomRenderContext()
     : m_nextImageId(1)

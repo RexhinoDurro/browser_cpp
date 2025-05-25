@@ -1,5 +1,13 @@
-// Only adding the resolveUrl method to browser.cpp - add this to the Browser class
+// src/browser/browser.cpp
+#include "browser.h"
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <algorithm>
 
+namespace browser {
+
+// Add the resolveUrl implementation to the Browser class
 std::string Browser::resolveUrl(const std::string& baseUrl, const std::string& relativeUrl) {
     // Check if already absolute
     if (relativeUrl.find("://") != std::string::npos) {
@@ -38,3 +46,7 @@ std::string Browser::resolveUrl(const std::string& baseUrl, const std::string& r
         return relativeUrl;
     }
 }
+
+// Other Browser class implementations would go here...
+
+} // namespace browser

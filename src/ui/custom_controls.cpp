@@ -2,11 +2,12 @@
 #include <iostream>
 #include <algorithm>
 
+#include "../rendering/custom_renderer.h"
 // Include our own header first
 #include "custom_controls.h"
 
 // Then include necessary rendering headers 
-#include "../rendering/custom_renderer.h"
+
 
 // Finally include browser_window.h
 #include "browser_window.h"
@@ -16,20 +17,18 @@ namespace ui {
 
 // Helper namespace for color operations
 namespace ColorHelper {
-    // Create a color by setting fields directly (avoids constructor issues)
+    // Create a Color directly using its constructor
     inline rendering::Color createColor(unsigned char r, unsigned char g, unsigned char b, float a = 1.0f) {
-        rendering::Color color;
-        color.r = r;
-        color.g = g;
-        color.b = b;
-        color.a = a;
-        return color;
+        return rendering::Color(r, g, b, a);
     }
     
-    // Set color on a paint object (avoids constructor issues)
+    // Use the constructor directly in setColor
     inline void setPaintColor(rendering::Paint& paint, unsigned char r, unsigned char g, unsigned char b, float a = 1.0f) {
-        rendering::Color color = createColor(r, g, b, a);
-        paint.setColor(color);
+        rendering::Color color(r, g, b, a);
+        paint.type = rendering::PaintType::COLOR;
+        paint.color = color;
+        // Directly set the fields instead of using setColor method
+        // This bypasses the problematic conversion
     }
 }
 

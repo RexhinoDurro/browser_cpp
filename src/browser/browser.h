@@ -39,7 +39,7 @@ public:
     
     // Get layout tree root
     std::shared_ptr<layout::Box> layoutRoot() const { return m_layoutEngine.layoutRoot(); }
-    
+    std::string resolveUrl(const std::string& baseUrl, const std::string& relativeUrl);
     // Render current page to ASCII art (for terminal viewing)
     std::string renderToASCII(int width, int height);
     
