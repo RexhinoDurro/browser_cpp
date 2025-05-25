@@ -3,6 +3,7 @@
 
 #include "../layout/layout_engine.h"
 #include "../css/style_resolver.h"
+#include "custom_renderer.h"  // Include this to get the Color class
 #include <string>
 #include <memory>
 #include <functional>
@@ -15,39 +16,6 @@ namespace rendering {
 class PaintSystem;
 class DisplayList;
 class CustomRenderContext;
-
-// Color class for RGBA colors
-class Color {
-public:
-    // Default constructor - black
-    Color() : r(0), g(0), b(0), a(1.0f) {}
-    
-    // RGB constructor (with optional alpha)
-    Color(unsigned char red, unsigned char green, unsigned char blue, float alpha = 1.0f)
-        : r(red), g(green), b(blue), a(alpha) {}
-    
-    // Copy constructor
-    Color(const Color& other) 
-        : r(other.r), g(other.g), b(other.b), a(other.a) {}
-    
-    // Assignment operator
-    Color& operator=(const Color& other) {
-        r = other.r;
-        g = other.g;
-        b = other.b;
-        a = other.a;
-        return *this;
-    }
-    
-    // Color components
-    unsigned char r, g, b;
-    float a;
-    
-    // Static helper for creating colors from RGB values
-    static Color fromRGB(unsigned char r, unsigned char g, unsigned char b) {
-        return Color(r, g, b);
-    }
-};
 
 // Abstract rendering context interface
 class RenderingContext {

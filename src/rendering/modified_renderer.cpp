@@ -14,64 +14,6 @@ namespace browser {
 namespace rendering {
 
 //-----------------------------------------------------------------------------
-// Color Implementation
-//-----------------------------------------------------------------------------
-
-Color Color::fromCssColor(const css::Value& value) {
-    std::string colorStr = value.stringValue();
-    
-    // Handle named colors
-    if (colorStr == "black") return Color(0, 0, 0);
-    if (colorStr == "white") return Color(255, 255, 255);
-    if (colorStr == "red") return Color(255, 0, 0);
-    if (colorStr == "green") return Color(0, 128, 0);
-    if (colorStr == "blue") return Color(0, 0, 255);
-    if (colorStr == "yellow") return Color(255, 255, 0);
-    if (colorStr == "purple") return Color(128, 0, 128);
-    if (colorStr == "gray" || colorStr == "grey") return Color(128, 128, 128);
-    if (colorStr == "transparent") return Color(0, 0, 0, 0);
-    
-    // Handle hex colors
-    if (colorStr.size() >= 7 && colorStr[0] == '#') {
-        int r = std::stoi(colorStr.substr(1, 2), nullptr, 16);
-        int g = std::stoi(colorStr.substr(3, 2), nullptr, 16);
-        int b = std::stoi(colorStr.substr(5, 2), nullptr, 16);
-        return Color(r, g, b);
-    } else if (colorStr.size() >= 4 && colorStr[0] == '#') {
-        int r = std::stoi(colorStr.substr(1, 1) + colorStr.substr(1, 1), nullptr, 16);
-        int g = std::stoi(colorStr.substr(2, 1) + colorStr.substr(2, 1), nullptr, 16);
-        int b = std::stoi(colorStr.substr(3, 1) + colorStr.substr(3, 1), nullptr, 16);
-        return Color(r, g, b);
-    }
-    
-    // Handle rgb/rgba
-    if (colorStr.substr(0, 4) == "rgb(") {
-        // This is a very simplified RGB parser
-        // A real implementation would handle more formats and error conditions
-        std::string values = colorStr.substr(4, colorStr.length() - 5);
-        std::stringstream ss(values);
-        int r, g, b;
-        char comma;
-        ss >> r >> comma >> g >> comma >> b;
-        return Color(r, g, b);
-    }
-    
-    if (colorStr.substr(0, 5) == "rgba(") {
-        // This is a very simplified RGBA parser
-        std::string values = colorStr.substr(5, colorStr.length() - 6);
-        std::stringstream ss(values);
-        int r, g, b;
-        float a;
-        char comma;
-        ss >> r >> comma >> g >> comma >> b >> comma >> a;
-        return Color(r, g, b, a);
-    }
-    
-    // Default to black
-    return Color(0, 0, 0);
-}
-
-//-----------------------------------------------------------------------------
 // Renderer Implementation
 //-----------------------------------------------------------------------------
 
@@ -179,7 +121,9 @@ void Renderer::renderCustomDisplayList(const DisplayList& displayList, CustomRen
     // Clear the context
     ctx->beginPath();
     ctx->rect(0, 0, ctx->getWindowWidth(), ctx->getWindowHeight());
-    ctx->setFillPaint(Paint(Color(255, 255, 255))); // White
+    Paint whitePaint;
+    whitePaint.setColor(Color(255, 255, 255)); // White
+    ctx->setFillPaint(whitePaint);
     ctx->fill();
     
     // Render each display item
@@ -192,7 +136,9 @@ void Renderer::renderCustomDisplayList(const DisplayList& displayList, CustomRen
                 ctx->beginPath();
                 ctx->rect(bgItem->rect().x, bgItem->rect().y, 
                           bgItem->rect().width, bgItem->rect().height);
-                ctx->setFillPaint(Paint(bgItem->color()));
+                Paint bgPaint;
+                bgPaint.setColor(bgItem->color());
+                ctx->setFillPaint(bgPaint);
                 ctx->fill();
                 break;
             }
@@ -202,7 +148,9 @@ void Renderer::renderCustomDisplayList(const DisplayList& displayList, CustomRen
                 ctx->beginPath();
                 ctx->rect(borderItem->rect().x, borderItem->rect().y, 
                          borderItem->rect().width, borderItem->rect().height);
-                ctx->setStrokePaint(Paint(borderItem->color()));
+                Paint borderPaint;
+                borderPaint.setColor(borderItem->color());
+                ctx->setStrokePaint(borderPaint);
                 ctx->setStrokeWidth(std::max({borderItem->topWidth(), borderItem->rightWidth(), 
                                             borderItem->bottomWidth(), borderItem->leftWidth()}));
                 ctx->stroke();
@@ -212,7 +160,9 @@ void Renderer::renderCustomDisplayList(const DisplayList& displayList, CustomRen
             case DisplayItemType::TEXT: {
                 auto textItem = static_cast<TextDisplayItem*>(item.get());
                 ctx->setFont(Font(textItem->fontFamily(), textItem->fontSize()));
-                ctx->setFillPaint(Paint(textItem->color()));
+                Paint textPaint;
+                textPaint.setColor(textItem->color());
+                ctx->setFillPaint(textPaint);
                 ctx->text(textItem->x(), textItem->y(), textItem->text());
                 break;
             }
@@ -223,19 +173,25 @@ void Renderer::renderCustomDisplayList(const DisplayList& displayList, CustomRen
                 ctx->beginPath();
                 ctx->rect(imageItem->rect().x, imageItem->rect().y, 
                          imageItem->rect().width, imageItem->rect().height);
-                ctx->setFillPaint(Paint(Color(200, 200, 200))); // Light gray
+                Paint grayPaint;
+                grayPaint.setColor(Color(200, 200, 200)); // Light gray
+                ctx->setFillPaint(grayPaint);
                 ctx->fill();
                 
                 ctx->beginPath();
                 ctx->rect(imageItem->rect().x, imageItem->rect().y, 
                          imageItem->rect().width, imageItem->rect().height);
-                ctx->setStrokePaint(Paint(Color(100, 100, 100))); // Dark gray
+                Paint darkGrayPaint;
+                darkGrayPaint.setColor(Color(100, 100, 100)); // Dark gray
+                ctx->setStrokePaint(darkGrayPaint);
                 ctx->setStrokeWidth(1.0f);
                 ctx->stroke();
                 
                 // Draw image URL as text
                 ctx->setFont(Font("sans", 10.0f));
-                ctx->setFillPaint(Paint(Color(0, 0, 0)));
+                Paint blackPaint;
+                blackPaint.setColor(Color(0, 0, 0));
+                ctx->setFillPaint(blackPaint);
                 ctx->text(imageItem->rect().x + 5, imageItem->rect().y + 15, 
                          "Image: " + imageItem->url());
                 break;
@@ -246,11 +202,13 @@ void Renderer::renderCustomDisplayList(const DisplayList& displayList, CustomRen
                 ctx->beginPath();
                 ctx->rect(rectItem->rect().x, rectItem->rect().y, 
                          rectItem->rect().width, rectItem->rect().height);
+                Paint rectPaint;
+                rectPaint.setColor(rectItem->color());
                 if (rectItem->filled()) {
-                    ctx->setFillPaint(Paint(rectItem->color()));
+                    ctx->setFillPaint(rectPaint);
                     ctx->fill();
                 } else {
-                    ctx->setStrokePaint(Paint(rectItem->color()));
+                    ctx->setStrokePaint(rectPaint);
                     ctx->setStrokeWidth(1.0f);
                     ctx->stroke();
                 }
