@@ -53,6 +53,21 @@ public:
     
     virtual std::string toASCII(int width, int height) override;
     
+    // Draw line method (needed for LineDisplayItem)
+    virtual void drawLine(float x1, float y1, float x2, float y2, float lineWidth) {
+        if (!m_context) return;
+        
+        m_context->beginPath();
+        m_context->moveTo(x1, y1);
+        m_context->lineTo(x2, y2);
+        m_context->setStrokePaint(Paint(m_strokeColor));
+        m_context->setStrokeWidth(lineWidth);
+        m_context->stroke();
+    }
+    
+    // Get underlying context
+    CustomRenderContext* getCustomContext() const { return m_context; }
+    
 private:
     CustomRenderContext* m_context;
     Color m_fillColor;

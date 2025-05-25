@@ -24,6 +24,18 @@ public:
     Color(unsigned char r, unsigned char g, unsigned char b, float a = 1.0f)
         : r(r), g(g), b(b), a(a) {}
     
+    // Copy constructor and assignment operator
+    Color(const Color& other) 
+        : r(other.r), g(other.g), b(other.b), a(other.a) {}
+        
+    Color& operator=(const Color& other) {
+        r = other.r;
+        g = other.g;
+        b = other.b;
+        a = other.a;
+        return *this;
+    }
+    
     static Color fromRGBA(unsigned int rgba) {
         return Color(
             (rgba >> 24) & 0xFF,
@@ -107,6 +119,7 @@ public:
     float a;
 };
 
+// Rest of the file remains the same...
 // Paint type
 enum class PaintType {
     NONE,
