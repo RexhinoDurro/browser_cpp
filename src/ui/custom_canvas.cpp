@@ -134,7 +134,7 @@ rendering::Color CustomCanvas::createColor(unsigned int color) {
     unsigned char b = color & 0xFF;
     unsigned char a = (color >> 24) & 0xFF;
     
-    // Create color with directly assigned components to avoid constructor issues
+    // Create color object
     rendering::Color renderColor;
     renderColor.r = r;
     renderColor.g = g;

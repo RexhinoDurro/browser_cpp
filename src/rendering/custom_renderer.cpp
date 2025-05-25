@@ -345,7 +345,7 @@ bool Image::save(const std::string& filename) const {
 //-----------------------------------------------------------------------------
 // CustomRenderContext Implementation
 //-----------------------------------------------------------------------------
-void browser::rendering::Paint::setColor(const Color& c) {
+void browser::rendering::Paint::setColor(Color c) {
     type = PaintType::COLOR;
     color = c;
 }
@@ -674,6 +674,59 @@ void CustomRenderContext::imageSize(int image, int* w, int* h) {
 
 void CustomRenderContext::deleteImage(int image) {
     m_images.erase(image);
+}
+
+Color Color::fromCssColor(const css::Value& value) {
+    std::string colorStr = value.stringValue();
+    
+    // Handle named colors
+    if (colorStr == "black") return Color(0, 0, 0);
+    if (colorStr == "white") return Color(255, 255, 255);
+    if (colorStr == "red") return Color(255, 0, 0);
+    if (colorStr == "green") return Color(0, 128, 0);
+    if (colorStr == "blue") return Color(0, 0, 255);
+    if (colorStr == "yellow") return Color(255, 255, 0);
+    if (colorStr == "purple") return Color(128, 0, 128);
+    if (colorStr == "gray" || colorStr == "grey") return Color(128, 128, 128);
+    if (colorStr == "transparent") return Color(0, 0, 0, 0);
+    
+    // Handle hex colors
+    if (colorStr.size() >= 7 && colorStr[0] == '#') {
+        int r = std::stoi(colorStr.substr(1, 2), nullptr, 16);
+        int g = std::stoi(colorStr.substr(3, 2), nullptr, 16);
+        int b = std::stoi(colorStr.substr(5, 2), nullptr, 16);
+        return Color(r, g, b);
+    } else if (colorStr.size() >= 4 && colorStr[0] == '#') {
+        int r = std::stoi(colorStr.substr(1, 1) + colorStr.substr(1, 1), nullptr, 16);
+        int g = std::stoi(colorStr.substr(2, 1) + colorStr.substr(2, 1), nullptr, 16);
+        int b = std::stoi(colorStr.substr(3, 1) + colorStr.substr(3, 1), nullptr, 16);
+        return Color(r, g, b);
+    }
+    
+    // Handle rgb/rgba
+    if (colorStr.substr(0, 4) == "rgb(") {
+        // This is a very simplified RGB parser
+        std::string values = colorStr.substr(4, colorStr.length() - 5);
+        std::stringstream ss(values);
+        int r, g, b;
+        char comma;
+        ss >> r >> comma >> g >> comma >> b;
+        return Color(r, g, b);
+    }
+    
+    if (colorStr.substr(0, 5) == "rgba(") {
+        // This is a very simplified RGBA parser
+        std::string values = colorStr.substr(5, colorStr.length() - 6);
+        std::stringstream ss(values);
+        int r, g, b;
+        float a;
+        char comma;
+        ss >> r >> comma >> g >> comma >> b >> comma >> a;
+        return Color(r, g, b, a);
+    }
+    
+    // Default to black
+    return Color(0, 0, 0);
 }
 
 void CustomRenderContext::scissor(float x, float y, float w, float h) {

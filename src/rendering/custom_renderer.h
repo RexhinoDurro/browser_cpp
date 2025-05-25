@@ -20,14 +20,18 @@ class Image;
 // Color class (RGBA)
 class Color {
 public:
+    // Default constructor - black
     Color() : r(0), g(0), b(0), a(1.0f) {}
-    Color(unsigned char r, unsigned char g, unsigned char b, float a = 1.0f)
-        : r(r), g(g), b(b), a(a) {}
     
-    // Copy constructor and assignment operator
+    // RGB constructor (with optional alpha)
+    Color(unsigned char red, unsigned char green, unsigned char blue, float alpha = 1.0f)
+        : r(red), g(green), b(blue), a(alpha) {}
+    
+    // Copy constructor
     Color(const Color& other) 
         : r(other.r), g(other.g), b(other.b), a(other.a) {}
         
+    // Assignment operator
     Color& operator=(const Color& other) {
         r = other.r;
         g = other.g;
@@ -36,6 +40,11 @@ public:
         return *this;
     }
     
+    // Color components
+    unsigned char r, g, b;
+    float a;
+    
+    // Static helper methods
     static Color fromRGBA(unsigned int rgba) {
         return Color(
             (rgba >> 24) & 0xFF,
@@ -54,59 +63,7 @@ public:
     }
     
     // Parse a CSS color value
-    static Color fromCssColor(const css::Value& value) {
-        std::string colorStr = value.stringValue();
-        
-        // Handle named colors
-        if (colorStr == "black") return Color(0, 0, 0);
-        if (colorStr == "white") return Color(255, 255, 255);
-        if (colorStr == "red") return Color(255, 0, 0);
-        if (colorStr == "green") return Color(0, 128, 0);
-        if (colorStr == "blue") return Color(0, 0, 255);
-        if (colorStr == "yellow") return Color(255, 255, 0);
-        if (colorStr == "purple") return Color(128, 0, 128);
-        if (colorStr == "gray" || colorStr == "grey") return Color(128, 128, 128);
-        if (colorStr == "transparent") return Color(0, 0, 0, 0);
-        
-        // Handle hex colors
-        if (colorStr.size() >= 7 && colorStr[0] == '#') {
-            int r = std::stoi(colorStr.substr(1, 2), nullptr, 16);
-            int g = std::stoi(colorStr.substr(3, 2), nullptr, 16);
-            int b = std::stoi(colorStr.substr(5, 2), nullptr, 16);
-            return Color(r, g, b);
-        } else if (colorStr.size() >= 4 && colorStr[0] == '#') {
-            int r = std::stoi(colorStr.substr(1, 1) + colorStr.substr(1, 1), nullptr, 16);
-            int g = std::stoi(colorStr.substr(2, 1) + colorStr.substr(2, 1), nullptr, 16);
-            int b = std::stoi(colorStr.substr(3, 1) + colorStr.substr(3, 1), nullptr, 16);
-            return Color(r, g, b);
-        }
-        
-        // Handle rgb/rgba
-        if (colorStr.substr(0, 4) == "rgb(") {
-            // This is a very simplified RGB parser
-            // A real implementation would handle more formats and error conditions
-            std::string values = colorStr.substr(4, colorStr.length() - 5);
-            std::stringstream ss(values);
-            int r, g, b;
-            char comma;
-            ss >> r >> comma >> g >> comma >> b;
-            return Color(r, g, b);
-        }
-        
-        if (colorStr.substr(0, 5) == "rgba(") {
-            // This is a very simplified RGBA parser
-            std::string values = colorStr.substr(5, colorStr.length() - 6);
-            std::stringstream ss(values);
-            int r, g, b;
-            float a;
-            char comma;
-            ss >> r >> comma >> g >> comma >> b >> comma >> a;
-            return Color(r, g, b, a);
-        }
-        
-        // Default to black
-        return Color(0, 0, 0);
-    }
+    static Color fromCssColor(const css::Value& value);
     
     unsigned int toRGBA() const {
         return ((unsigned int)r << 24) | 
@@ -114,12 +71,8 @@ public:
                ((unsigned int)b << 8) | 
                (unsigned int)(a * 255.0f);
     }
-    
-    unsigned char r, g, b;
-    float a;
 };
 
-// Rest of the file remains the same...
 // Paint type
 enum class PaintType {
     NONE,
@@ -132,8 +85,8 @@ enum class PaintType {
 // Paint class (for fills and strokes)
 class Paint {
 public:
+    // Default constructor
     Paint() : type(PaintType::NONE) {}
-    Paint(const Color& color) : type(PaintType::COLOR), color(color) {}
     
     // Create linear gradient paint
     static Paint linearGradient(float sx, float sy, float ex, float ey, 
@@ -147,8 +100,11 @@ public:
     static Paint imagePattern(const Image& image, float x, float y, float width, float height,
                             float angle, float alpha);
     
-    // Setter for color (added to support easier construction)
-    void setColor(const Color& c);
+    // Setter for color - take by value to avoid const reference issues
+    void setColor(Color c) {
+        type = PaintType::COLOR;
+        color = c;
+    }
     
     PaintType type;
     Color color;
@@ -161,16 +117,16 @@ public:
     std::vector<GradientStop> stops;
     
     // Gradient parameters
-    float startX, startY;
-    float endX, endY;
-    float innerRadius, outerRadius;
+    float startX = 0, startY = 0;
+    float endX = 0, endY = 0;
+    float innerRadius = 0, outerRadius = 0;
     
     // Image pattern parameters
     std::shared_ptr<Image> image;
-    float patternX, patternY;
-    float patternWidth, patternHeight;
-    float patternAngle;
-    float patternAlpha;
+    float patternX = 0, patternY = 0;
+    float patternWidth = 0, patternHeight = 0;
+    float patternAngle = 0;
+    float patternAlpha = 1.0f;
 };
 
 // Path class for vector shapes
