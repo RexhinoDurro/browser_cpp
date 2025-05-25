@@ -1,27 +1,36 @@
+// Include minimal headers first
+#include <iostream>
+#include <algorithm>
+
 // Include our own header first
 #include "custom_controls.h"
 
-// Include browser_window.h second (it might be including conflicting headers)
-#include "browser_window.h"
-
-// Finally include the renderer headers directly, in a specific order
+// Then include necessary rendering headers 
 #include "../rendering/custom_renderer.h"
-#include "../rendering/renderer.h"
 
-#include <iostream>
-#include <algorithm>
+// Finally include browser_window.h
+#include "browser_window.h"
 
 namespace browser {
 namespace ui {
 
-// Helper function to create colors by direct component assignment to avoid constructor issues
-static rendering::Color createColor(unsigned char r, unsigned char g, unsigned char b, float a = 1.0f) {
-    rendering::Color color;
-    color.r = r;
-    color.g = g;
-    color.b = b;
-    color.a = a;
-    return color;
+// Helper namespace for color operations
+namespace ColorHelper {
+    // Create a color by setting fields directly (avoids constructor issues)
+    inline rendering::Color createColor(unsigned char r, unsigned char g, unsigned char b, float a = 1.0f) {
+        rendering::Color color;
+        color.r = r;
+        color.g = g;
+        color.b = b;
+        color.a = a;
+        return color;
+    }
+    
+    // Set color on a paint object (avoids constructor issues)
+    inline void setPaintColor(rendering::Paint& paint, unsigned char r, unsigned char g, unsigned char b, float a = 1.0f) {
+        rendering::Color color = createColor(r, g, b, a);
+        paint.setColor(color);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -133,33 +142,22 @@ void Button::setClickHandler(std::function<void()> handler) {
 void Button::draw(rendering::CustomRenderContext* ctx) {
     if (!ctx || !m_visible) return;
     
-    // Choose colors based on state
-    rendering::Color bgColor, textColor, borderColor;
-    
-    if (!m_enabled) {
-        // Disabled state
-        bgColor = createColor(200, 200, 200);
-        textColor = createColor(128, 128, 128);
-        borderColor = createColor(180, 180, 180);
-    } else if (m_hover) {
-        // Hover state
-        bgColor = createColor(230, 230, 255);
-        textColor = createColor(0, 0, 0);
-        borderColor = createColor(100, 100, 255);
-    } else {
-        // Normal state
-        bgColor = createColor(240, 240, 240);
-        textColor = createColor(0, 0, 0);
-        borderColor = createColor(180, 180, 180);
-    }
-    
     // Draw button background
     ctx->beginPath();
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
     
-    // Use setColor instead of constructor
     rendering::Paint fillPaint;
-    fillPaint.setColor(bgColor);
+    if (!m_enabled) {
+        // Disabled state
+        ColorHelper::setPaintColor(fillPaint, 200, 200, 200);
+    } else if (m_hover) {
+        // Hover state
+        ColorHelper::setPaintColor(fillPaint, 230, 230, 255);
+    } else {
+        // Normal state
+        ColorHelper::setPaintColor(fillPaint, 240, 240, 240);
+    }
+    
     ctx->setFillPaint(fillPaint);
     ctx->fill();
     
@@ -168,7 +166,17 @@ void Button::draw(rendering::CustomRenderContext* ctx) {
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
     
     rendering::Paint strokePaint;
-    strokePaint.setColor(borderColor);
+    if (!m_enabled) {
+        // Disabled state
+        ColorHelper::setPaintColor(strokePaint, 180, 180, 180);
+    } else if (m_hover) {
+        // Hover state
+        ColorHelper::setPaintColor(strokePaint, 100, 100, 255);
+    } else {
+        // Normal state
+        ColorHelper::setPaintColor(strokePaint, 180, 180, 180);
+    }
+    
     ctx->setStrokePaint(strokePaint);
     ctx->setStrokeWidth(1.0f);
     ctx->stroke();
@@ -177,7 +185,14 @@ void Button::draw(rendering::CustomRenderContext* ctx) {
     ctx->setFont(rendering::Font("sans", 12.0f));
     
     rendering::Paint textPaint;
-    textPaint.setColor(textColor);
+    if (!m_enabled) {
+        // Disabled state
+        ColorHelper::setPaintColor(textPaint, 128, 128, 128);
+    } else {
+        // Normal state
+        ColorHelper::setPaintColor(textPaint, 0, 0, 0);
+    }
+    
     ctx->setFillPaint(textPaint);
     
     // Measure text width for centering
@@ -190,8 +205,6 @@ void Button::draw(rendering::CustomRenderContext* ctx) {
     float textY = m_y + (m_height + 12.0f) / 2.0f;
     ctx->text(textX, textY, m_text);
 }
-
-
 
 bool Button::handleMouseButton(int button, int action, int mods, int x, int y) {
     if (m_enabled && button == 0 && action == 1 && m_hover) { // Left button press
@@ -250,32 +263,22 @@ void TextInput::setTextChangeHandler(std::function<void(const std::string&)> han
 void TextInput::draw(rendering::CustomRenderContext* ctx) {
     if (!ctx || !m_visible) return;
     
-    // Choose colors based on state
-    rendering::Color bgColor, textColor, borderColor;
-    
-    if (!m_enabled) {
-        // Disabled state
-        bgColor = createColor(220, 220, 220);
-        textColor = createColor(128, 128, 128);
-        borderColor = createColor(180, 180, 180);
-    } else if (m_focused) {
-        // Focused state
-        bgColor = createColor(255, 255, 255);
-        textColor = createColor(0, 0, 0);
-        borderColor = createColor(100, 100, 255);
-    } else {
-        // Normal state
-        bgColor = createColor(255, 255, 255);
-        textColor = createColor(0, 0, 0);
-        borderColor = createColor(180, 180, 180);
-    }
-    
     // Draw text field background
     ctx->beginPath();
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
     
     rendering::Paint bgPaint;
-    bgPaint.setColor(bgColor);
+    if (!m_enabled) {
+        // Disabled state
+        ColorHelper::setPaintColor(bgPaint, 220, 220, 220);
+    } else if (m_focused) {
+        // Focused state
+        ColorHelper::setPaintColor(bgPaint, 255, 255, 255);
+    } else {
+        // Normal state
+        ColorHelper::setPaintColor(bgPaint, 255, 255, 255);
+    }
+    
     ctx->setFillPaint(bgPaint);
     ctx->fill();
     
@@ -284,7 +287,17 @@ void TextInput::draw(rendering::CustomRenderContext* ctx) {
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
     
     rendering::Paint borderPaint;
-    borderPaint.setColor(borderColor);
+    if (!m_enabled) {
+        // Disabled state
+        ColorHelper::setPaintColor(borderPaint, 180, 180, 180);
+    } else if (m_focused) {
+        // Focused state
+        ColorHelper::setPaintColor(borderPaint, 100, 100, 255);
+    } else {
+        // Normal state
+        ColorHelper::setPaintColor(borderPaint, 180, 180, 180);
+    }
+    
     ctx->setStrokePaint(borderPaint);
     ctx->setStrokeWidth(1.0f);
     ctx->stroke();
@@ -299,7 +312,7 @@ void TextInput::draw(rendering::CustomRenderContext* ctx) {
     if (m_text.empty() && !m_focused) {
         // Draw placeholder
         rendering::Paint placeholderPaint;
-        placeholderPaint.setColor(createColor(180, 180, 180));
+        ColorHelper::setPaintColor(placeholderPaint, 180, 180, 180);
         ctx->setFillPaint(placeholderPaint);
         ctx->text(m_x + padding, m_y + (m_height + 12.0f) / 2.0f, m_placeholder);
     } else {
@@ -334,15 +347,21 @@ void TextInput::draw(rendering::CustomRenderContext* ctx) {
                      12.0f);
             
             rendering::Paint selPaint;
-            rendering::Color selColor = createColor(100, 100, 255, 0.3f);
-            selPaint.setColor(selColor);
+            ColorHelper::setPaintColor(selPaint, 100, 100, 255, 0.3f);
             ctx->setFillPaint(selPaint);
             ctx->fill();
         }
         
         // Draw text
         rendering::Paint textPaint;
-        textPaint.setColor(textColor);
+        if (!m_enabled) {
+            // Disabled state
+            ColorHelper::setPaintColor(textPaint, 128, 128, 128);
+        } else {
+            // Normal state
+            ColorHelper::setPaintColor(textPaint, 0, 0, 0);
+        }
+        
         ctx->setFillPaint(textPaint);
         ctx->text(m_x + padding, m_y + (m_height + 12.0f) / 2.0f, m_text);
         
@@ -362,7 +381,12 @@ void TextInput::draw(rendering::CustomRenderContext* ctx) {
             ctx->lineTo(cursorX, m_y + (m_height + 12.0f) / 2.0f);
             
             rendering::Paint cursorPaint;
-            cursorPaint.setColor(textColor);
+            if (!m_enabled) {
+                ColorHelper::setPaintColor(cursorPaint, 128, 128, 128);
+            } else {
+                ColorHelper::setPaintColor(cursorPaint, 0, 0, 0);
+            }
+            
             ctx->setStrokePaint(cursorPaint);
             ctx->setStrokeWidth(1.0f);
             ctx->stroke();
@@ -564,7 +588,7 @@ void ProgressBar::draw(rendering::CustomRenderContext* ctx) {
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
     
     rendering::Paint bgPaint;
-    bgPaint.setColor(createColor(220, 220, 220));
+    ColorHelper::setPaintColor(bgPaint, 220, 220, 220);
     ctx->setFillPaint(bgPaint);
     ctx->fill();
     
@@ -573,7 +597,7 @@ void ProgressBar::draw(rendering::CustomRenderContext* ctx) {
     ctx->roundedRect(m_x, m_y, m_width, m_height, 3.0f);
     
     rendering::Paint borderPaint;
-    borderPaint.setColor(createColor(180, 180, 180));
+    ColorHelper::setPaintColor(borderPaint, 180, 180, 180);
     ctx->setStrokePaint(borderPaint);
     ctx->setStrokeWidth(1.0f);
     ctx->stroke();
@@ -587,7 +611,7 @@ void ProgressBar::draw(rendering::CustomRenderContext* ctx) {
         ctx->roundedRect(x, m_y + 1, barWidth, m_height - 2, 2.0f);
         
         rendering::Paint progressPaint;
-        progressPaint.setColor(createColor(100, 100, 255));
+        ColorHelper::setPaintColor(progressPaint, 100, 100, 255);
         ctx->setFillPaint(progressPaint);
         ctx->fill();
         
@@ -605,7 +629,7 @@ void ProgressBar::draw(rendering::CustomRenderContext* ctx) {
             ctx->roundedRect(m_x + 1, m_y + 1, progressWidth - 2, m_height - 2, 2.0f);
             
             rendering::Paint progressPaint;
-            progressPaint.setColor(createColor(100, 100, 255));
+            ColorHelper::setPaintColor(progressPaint, 100, 100, 255);
             ctx->setFillPaint(progressPaint);
             ctx->fill();
         }
@@ -638,7 +662,7 @@ void Toolbar::draw(rendering::CustomRenderContext* ctx) {
     ctx->rect(m_x, m_y, m_width, m_height);
     
     rendering::Paint bgPaint;
-    bgPaint.setColor(createColor(240, 240, 240));
+    ColorHelper::setPaintColor(bgPaint, 240, 240, 240);
     ctx->setFillPaint(bgPaint);
     ctx->fill();
     
@@ -647,7 +671,7 @@ void Toolbar::draw(rendering::CustomRenderContext* ctx) {
     ctx->rect(m_x, m_y, m_width, m_height);
     
     rendering::Paint borderPaint;
-    borderPaint.setColor(createColor(200, 200, 200));
+    ColorHelper::setPaintColor(borderPaint, 200, 200, 200);
     ctx->setStrokePaint(borderPaint);
     ctx->setStrokeWidth(1.0f);
     ctx->stroke();

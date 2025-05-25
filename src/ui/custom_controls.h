@@ -4,18 +4,27 @@
 #include <string>
 #include <functional>
 #include <memory>
-#include "window.h"
+#include <vector>
 
-// Conditional include to prevent double inclusion of custom_renderer.h
-#ifndef BROWSER_RENDERING_CUSTOM_RENDERER_INCLUDED
-#define BROWSER_RENDERING_CUSTOM_RENDERER_INCLUDED
-#include "../rendering/custom_renderer.h" 
-#endif
+// Forward declare necessary classes instead of including headers
+namespace browser {
+    namespace rendering {
+        class Color;
+        class CustomRenderContext;
+        class Paint;
+        class Font;
+    }
+    
+    namespace ui {
+        class BrowserWindow;
+    }
+}
+
+// Include only what we need for the base UI classes
+#include "window.h"
 
 namespace browser {
 namespace ui {
-
-class BrowserWindow; // Forward declaration for browser window
 
 // Base control class
 class Control {
