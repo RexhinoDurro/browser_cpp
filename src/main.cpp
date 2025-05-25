@@ -1,22 +1,34 @@
-// A simple test in your main.cpp or a test file
-#include "browser/browser.h"
+// src/main.cpp
+#include "ui/browser_window.h"
 #include <iostream>
 
-int main() {
-    browser::Browser browser;
-    if (!browser.initialize()) {
-        std::cerr << "Failed to initialize browser" << std::endl;
+int main(int argc, char* argv[]) {
+    // Create browser window configuration
+    browser::ui::WindowConfig config;
+    config.title = "Simple Browser";
+    config.width = 1024;
+    config.height = 768;
+    config.resizable = true;
+    
+    // Create browser window
+    browser::ui::BrowserWindow browserWindow(config);
+    
+    // Initialize browser
+    if (!browserWindow.initialize()) {
+        std::cerr << "Failed to initialize browser window" << std::endl;
         return 1;
     }
     
-    std::string script = "var x = 10; var y = 20; x + y;";
-    std::string result, error;
+    // Show the browser window
+    browserWindow.show();
     
-    if (browser.jsEngine()->executeScript(script, result, error)) {
-        std::cout << "Script result: " << result << std::endl;
-    } else {
-        std::cerr << "Script error: " << error << std::endl;
+    // Load a URL if provided as command line argument
+    if (argc > 1) {
+        browserWindow.loadUrl(argv[1]);
     }
+    
+    // Run the event loop
+    browserWindow.runEventLoop();
     
     return 0;
 }
