@@ -1,30 +1,45 @@
-// js_engine.cpp - Proper structure
+// js_engine.cpp - Fixed implementation
 #include "js_engine.h"
 #include "js_value.h"  // Make sure this is included
 #include <iostream>
 #include <sstream>
+#include <limits>  // for std::numeric_limits
+#include <cmath>   // for std::isnan
 
 namespace browser {
 namespace custom_js {
 
 // JSValue Implementation
 JSValue::JSValue() : m_type(JSValueType::UNDEFINED) {
-    // Initialize as undefined
+    m_value = nullptr;
 }
 
-JSValue::JSValue(bool value) : m_type(JSValueType::BOOLEAN), m_boolean(value) {
+JSValue::JSValue(std::nullptr_t) : m_type(JSValueType::NULL_TYPE) {
+    m_value = nullptr;
 }
 
-JSValue::JSValue(double value) : m_type(JSValueType::NUMBER), m_number(value) {
+JSValue::JSValue(bool value) : m_type(JSValueType::BOOLEAN) {
+    m_value = value;
 }
 
-JSValue::JSValue(const std::string& value) : m_type(JSValueType::STRING), m_string(value) {
+JSValue::JSValue(double value) : m_type(JSValueType::NUMBER) {
+    m_value = value;
 }
 
-JSValue::JSValue(std::shared_ptr<JSObject> object) : m_type(JSValueType::OBJECT), m_object(object) {
+JSValue::JSValue(const std::string& value) : m_type(JSValueType::STRING) {
+    m_value = value;
 }
 
-JSValue::JSValue(std::shared_ptr<JSFunction> function) : m_type(JSValueType::FUNCTION), m_function(function) {
+JSValue::JSValue(std::shared_ptr<JSObject> object) : m_type(JSValueType::OBJECT) {
+    m_value = object;
+}
+
+JSValue::JSValue(std::shared_ptr<JSFunction> function) : m_type(JSValueType::FUNCTION) {
+    m_value = function;
+}
+
+JSValue::JSValue(std::shared_ptr<JSArray> array) : m_type(JSValueType::ARRAY) {
+    m_value = array;
 }
 
 // Type conversions
@@ -34,11 +49,13 @@ bool JSValue::toBoolean() const {
         case JSValueType::NULL_TYPE:
             return false;
         case JSValueType::BOOLEAN:
-            return m_boolean;
-        case JSValueType::NUMBER:
-            return m_number != 0.0 && !std::isnan(m_number);
+            return std::get<bool>(m_value);
+        case JSValueType::NUMBER: {
+            double num = std::get<double>(m_value);
+            return num != 0.0 && !std::isnan(num);
+        }
         case JSValueType::STRING:
-            return !m_string.empty();
+            return !std::get<std::string>(m_value).empty();
         case JSValueType::OBJECT:
         case JSValueType::FUNCTION:
             return true;
@@ -54,12 +71,12 @@ double JSValue::toNumber() const {
         case JSValueType::NULL_TYPE:
             return 0.0;
         case JSValueType::BOOLEAN:
-            return m_boolean ? 1.0 : 0.0;
+            return std::get<bool>(m_value) ? 1.0 : 0.0;
         case JSValueType::NUMBER:
-            return m_number;
+            return std::get<double>(m_value);
         case JSValueType::STRING:
             try {
-                return std::stod(m_string);
+                return std::stod(std::get<std::string>(m_value));
             } catch (...) {
                 return std::numeric_limits<double>::quiet_NaN();
             }
@@ -75,11 +92,11 @@ std::string JSValue::toString() const {
         case JSValueType::NULL_TYPE:
             return "null";
         case JSValueType::BOOLEAN:
-            return m_boolean ? "true" : "false";
+            return std::get<bool>(m_value) ? "true" : "false";
         case JSValueType::NUMBER:
-            return std::to_string(m_number);
+            return std::to_string(std::get<double>(m_value));
         case JSValueType::STRING:
-            return m_string;
+            return std::get<std::string>(m_value);
         case JSValueType::OBJECT:
             return "[object Object]";
         case JSValueType::FUNCTION:
@@ -91,14 +108,21 @@ std::string JSValue::toString() const {
 
 std::shared_ptr<JSObject> JSValue::toObject() const {
     if (m_type == JSValueType::OBJECT) {
-        return m_object;
+        return std::get<std::shared_ptr<JSObject>>(m_value);
     }
     return nullptr;
 }
 
 std::shared_ptr<JSFunction> JSValue::toFunction() const {
     if (m_type == JSValueType::FUNCTION) {
-        return m_function;
+        return std::get<std::shared_ptr<JSFunction>>(m_value);
+    }
+    return nullptr;
+}
+
+std::shared_ptr<JSArray> JSValue::toArray() const {
+    if (m_type == JSValueType::ARRAY) {
+        return std::get<std::shared_ptr<JSArray>>(m_value);
     }
     return nullptr;
 }
@@ -126,11 +150,16 @@ bool JSObject::has(const std::string& key) const {
     return m_properties.find(key) != m_properties.end();
 }
 
-void JSObject::remove(const std::string& key) {
-    m_properties.erase(key);
+bool JSObject::remove(const std::string& key) {
+    auto it = m_properties.find(key);
+    if (it != m_properties.end()) {
+        m_properties.erase(it);
+        return true;
+    }
+    return false;
 }
 
-std::vector<std::string> JSObject::keys() const {
+std::vector<std::string> JSObject::getPropertyNames() const {
     std::vector<std::string> result;
     for (const auto& pair : m_properties) {
         result.push_back(pair.first);
@@ -150,6 +179,53 @@ JSValue JSFunction::call(const std::vector<JSValue>& args, JSValue thisValue) {
         return m_function(args, thisValue);
     }
     return JSValue(); // undefined
+}
+
+// JSArray Implementation
+JSArray::JSArray() : JSObject() {
+    JSObject::set("length", JSValue(0.0));
+}
+
+JSArray::~JSArray() {
+}
+
+size_t JSArray::length() const {
+    JSValue lengthValue = JSObject::get("length");
+    return static_cast<size_t>(lengthValue.toNumber());
+}
+
+void JSArray::push(const JSValue& value) {
+    size_t currentLength = length();
+    JSObject::set(std::to_string(currentLength), value);
+    JSObject::set("length", JSValue(static_cast<double>(currentLength + 1)));
+}
+
+JSValue JSArray::pop() {
+    size_t currentLength = length();
+    if (currentLength == 0) {
+        return JSValue(); // undefined
+    }
+    
+    size_t lastIndex = currentLength - 1;
+    JSValue lastValue = JSObject::get(std::to_string(lastIndex));
+    JSObject::remove(std::to_string(lastIndex));
+    JSObject::set("length", JSValue(static_cast<double>(lastIndex)));
+    
+    return lastValue;
+}
+
+JSValue JSArray::get(size_t index) const {
+    return JSObject::get(std::to_string(index));
+}
+
+void JSArray::set(size_t index, const JSValue& value) {
+    JSObject::set(std::to_string(index), value);
+    
+    // Update length if necessary
+    size_t currentLength = length();
+    if (index >= currentLength) {
+        JSObject::set("length", JSValue(static_cast<double>(index + 1)));
+    }
 }
 
 // JSEngine Implementation
