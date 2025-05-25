@@ -48,6 +48,7 @@ public:
     StyleResolver();
     ~StyleResolver();
     
+    bool initialize() { return true; }  // Simple initialization
     // Set the document to style
     void setDocument(html::Document* document) { m_document = document; }
     

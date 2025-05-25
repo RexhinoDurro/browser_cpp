@@ -40,6 +40,7 @@ public:
     // Get layout tree root
     std::shared_ptr<layout::Box> layoutRoot() const { return m_layoutEngine.layoutRoot(); }
     std::string resolveUrl(const std::string& baseUrl, const std::string& relativeUrl);
+    
     // Render current page to ASCII art (for terminal viewing)
     std::string renderToASCII(int width, int height);
     
@@ -53,16 +54,22 @@ private:
     std::unique_ptr<networking::ResourceLoader> m_resourceLoader;
     std::unique_ptr<security::SecurityManager> m_securityManager;
     
-    // Current document
+    // Current document state
     html::DOMTree m_domTree;
+    std::string m_currentUrl;
+    security::Origin m_currentOrigin{security::Origin::null()};  // Initialize inline
     
     // Load and process resources
     bool loadStylesheets(const std::string& baseUrl);
     bool loadScripts(const std::string& baseUrl);
     bool loadImages(const std::string& baseUrl);
+    bool loadAboutPage(const std::string& url, std::string& error);
     
     // Process security headers
     void processSecurityHeaders(const std::map<std::string, std::string>& headers, const std::string& url);
+    
+    // Setup JavaScript bindings
+    void setupJavaScriptBindings();
 };
 
 } // namespace browser

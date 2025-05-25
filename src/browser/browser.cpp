@@ -347,7 +347,7 @@ bool Browser::loadStylesheets(const std::string& baseUrl) {
                 
                 // Parse and add stylesheet
                 try {
-                    auto stylesheet = std::make_shared<css::Stylesheet>();
+                    auto stylesheet = std::make_shared<css::StyleSheet>();
                     // Note: In a real implementation, you'd parse the CSS here
                     m_styleResolver.addStyleSheet(*stylesheet);
                 } catch (const std::exception& e) {
@@ -367,7 +367,7 @@ bool Browser::loadStylesheets(const std::string& baseUrl) {
         std::string css = style->textContent();
         if (!css.empty()) {
             try {
-                auto stylesheet = std::make_shared<css::Stylesheet>();
+                auto stylesheet = std::make_shared<css::StyleSheet>();
                 // Note: In a real implementation, you'd parse the CSS here
                 m_styleResolver.addStyleSheet(*stylesheet);
             } catch (const std::exception& e) {
