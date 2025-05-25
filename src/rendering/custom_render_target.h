@@ -60,7 +60,10 @@ public:
         m_context->beginPath();
         m_context->moveTo(x1, y1);
         m_context->lineTo(x2, y2);
-        m_context->setStrokePaint(Paint(m_strokeColor));
+        // Modified to use setColor method instead of constructor
+        Paint strokePaint;
+        strokePaint.setColor(m_strokeColor);
+        m_context->setStrokePaint(strokePaint);
         m_context->setStrokeWidth(lineWidth);
         m_context->stroke();
     }

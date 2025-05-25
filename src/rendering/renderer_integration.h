@@ -1,10 +1,17 @@
+// src/rendering/renderer_integration.h
 #ifndef BROWSER_RENDERER_INTEGRATION_H
 #define BROWSER_RENDERER_INTEGRATION_H
 
 #include "renderer.h"
 #include "paint_system.h"
 #include "custom_render_target.h"
+
+// Conditional include to prevent double inclusion of custom_renderer.h
+#ifndef BROWSER_RENDERING_CUSTOM_RENDERER_INCLUDED
+#define BROWSER_RENDERING_CUSTOM_RENDERER_INCLUDED
 #include "custom_renderer.h"
+#endif
+
 #include "../layout/layout_engine.h"
 
 namespace browser {

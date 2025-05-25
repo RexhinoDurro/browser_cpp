@@ -5,7 +5,12 @@
 #include <functional>
 #include <memory>
 #include "window.h"
+
+// Conditional include to prevent double inclusion of custom_renderer.h
+#ifndef BROWSER_RENDERING_CUSTOM_RENDERER_INCLUDED
+#define BROWSER_RENDERING_CUSTOM_RENDERER_INCLUDED
 #include "../rendering/custom_renderer.h" 
+#endif
 
 namespace browser {
 namespace ui {

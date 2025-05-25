@@ -1,6 +1,13 @@
+// Include our own header first
 #include "custom_controls.h"
+
+// Include browser_window.h second (it might be including conflicting headers)
 #include "browser_window.h"
-#include "../rendering/renderer_integration.h"
+
+// Finally include the renderer headers directly, in a specific order
+#include "../rendering/custom_renderer.h"
+#include "../rendering/renderer.h"
+
 #include <iostream>
 #include <algorithm>
 
@@ -183,6 +190,8 @@ void Button::draw(rendering::CustomRenderContext* ctx) {
     float textY = m_y + (m_height + 12.0f) / 2.0f;
     ctx->text(textX, textY, m_text);
 }
+
+
 
 bool Button::handleMouseButton(int button, int action, int mods, int x, int y) {
     if (m_enabled && button == 0 && action == 1 && m_hover) { // Left button press

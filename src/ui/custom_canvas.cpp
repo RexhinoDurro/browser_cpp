@@ -1,154 +1,163 @@
-#include "custom_canvas.h"
-#include "../rendering/renderer_integration.h"
-#include <iostream>
+// src/rendering/custom_render_target.cpp
+#include "custom_render_target.h"
+#include <sstream>
 
 namespace browser {
-namespace ui {
+namespace rendering {
 
-CustomCanvas::CustomCanvas(int width, int height)
-    : Canvas(width, height)
+//-----------------------------------------------------------------------------
+// CustomRenderTarget Implementation
+//-----------------------------------------------------------------------------
+
+CustomRenderTarget::CustomRenderTarget(int width, int height)
+    : m_width(width)
+    , m_height(height)
 {
-    // Create a custom render context
-    m_context = std::make_shared<rendering::CustomRenderContext>();
+    // Initialize custom renderer
+    m_context = std::make_shared<CustomRenderContext>();
+    
+    // Create adapter
+    m_renderingContext = std::make_shared<CustomRenderingContext>(m_context.get());
 }
 
-CustomCanvas::~CustomCanvas() {
-    // Cleanup resources
+CustomRenderTarget::~CustomRenderTarget() {
 }
 
-bool CustomCanvas::initialize() {
-    // Initialize the render context
-    if (m_context) {
-        m_context->beginFrame(m_width, m_height, 1.0f);
-        return true;
+RenderingContext* CustomRenderTarget::context() {
+    return m_renderingContext.get();
+}
+
+RenderTargetType CustomRenderTarget::type() const {
+    return RenderTargetType::BITMAP;
+}
+
+int CustomRenderTarget::width() const {
+    return m_width;
+}
+
+int CustomRenderTarget::height() const {
+    return m_height;
+}
+
+std::string CustomRenderTarget::toString() {
+    // Render to ASCII representation
+    if (m_renderingContext) {
+        return m_renderingContext->toASCII(m_width, m_height);
     }
-    return false;
+    return "";
 }
 
-void CustomCanvas::clear(unsigned int color) {
+//-----------------------------------------------------------------------------
+// CustomRenderingContext Implementation
+//-----------------------------------------------------------------------------
+
+CustomRenderingContext::CustomRenderingContext(CustomRenderContext* ctx)
+    : m_context(ctx)
+    , m_fillColor(255, 255, 255)
+    , m_strokeColor(0, 0, 0)
+    , m_textColor(0, 0, 0)
+{
+}
+
+CustomRenderingContext::~CustomRenderingContext() {
+}
+
+void CustomRenderingContext::setFillColor(const Color& color) {
+    m_fillColor = color;
+}
+
+void CustomRenderingContext::fillRect(float x, float y, float width, float height) {
     if (!m_context) return;
     
-    // Create a paint with the specified color
-    rendering::Paint paint;
-    paint.setColor(createColor(color));
-    
-    // Clear the canvas
     m_context->beginPath();
-    m_context->rect(0, 0, m_width, m_height);
+    m_context->rect(x, y, width, height);
+    
+    // Use the setColor method instead of constructor
+    Paint paint;
+    paint.setColor(m_fillColor);
     m_context->setFillPaint(paint);
     m_context->fill();
 }
 
-void CustomCanvas::drawLine(int x1, int y1, int x2, int y2, unsigned int color, int thickness) {
-    if (!m_context) return;
-    
-    // Create a paint with the specified color
-    rendering::Paint paint;
-    paint.setColor(createColor(color));
-    
-    // Draw the line
-    m_context->beginPath();
-    m_context->moveTo(x1, y1);
-    m_context->lineTo(x2, y2);
-    m_context->setStrokePaint(paint);
-    m_context->setStrokeWidth(thickness);
-    m_context->stroke();
+void CustomRenderingContext::setStrokeColor(const Color& color) {
+    m_strokeColor = color;
 }
 
-void CustomCanvas::drawRect(int x, int y, int width, int height, unsigned int color, bool filled, int thickness) {
+void CustomRenderingContext::strokeRect(float x, float y, float width, float height, float lineWidth) {
     if (!m_context) return;
     
-    // Create a paint with the specified color
-    rendering::Paint paint;
-    paint.setColor(createColor(color));
-    
-    // Draw the rectangle
     m_context->beginPath();
     m_context->rect(x, y, width, height);
     
-    if (filled) {
-        m_context->setFillPaint(paint);
-        m_context->fill();
-    } else {
-        m_context->setStrokePaint(paint);
-        m_context->setStrokeWidth(thickness);
-        m_context->stroke();
-    }
+    // Use the setColor method instead of constructor
+    Paint paint;
+    paint.setColor(m_strokeColor);
+    m_context->setStrokePaint(paint);
+    m_context->setStrokeWidth(lineWidth);
+    m_context->stroke();
 }
 
-void CustomCanvas::drawEllipse(int x, int y, int width, int height, unsigned int color, bool filled, int thickness) {
-    if (!m_context) return;
-    
-    // Create a paint with the specified color
-    rendering::Paint paint;
-    paint.setColor(createColor(color));
-    
-    // Draw the ellipse
-    m_context->beginPath();
-    m_context->ellipse(x + width/2.0f, y + height/2.0f, width/2.0f, height/2.0f);
-    
-    if (filled) {
-        m_context->setFillPaint(paint);
-        m_context->fill();
-    } else {
-        m_context->setStrokePaint(paint);
-        m_context->setStrokeWidth(thickness);
-        m_context->stroke();
-    }
+void CustomRenderingContext::setTextColor(const Color& color) {
+    m_textColor = color;
 }
 
-void CustomCanvas::drawText(const std::string& text, int x, int y, unsigned int color, const std::string& fontName, int fontSize) {
+void CustomRenderingContext::drawText(const std::string& text, float x, float y, const std::string& fontFamily, float fontSize) {
     if (!m_context) return;
     
-    // Create a paint with the specified color
-    rendering::Paint paint;
-    paint.setColor(createColor(color));
+    m_context->setFont(Font(fontFamily, fontSize));
     
-    // Set font
-    rendering::Font font(fontName, fontSize);
-    m_context->setFont(font);
-    
-    // Set fill paint for text
+    // Use the setColor method instead of constructor
+    Paint paint;
+    paint.setColor(m_textColor);
     m_context->setFillPaint(paint);
-    
-    // Draw the text
     m_context->text(x, y, text);
 }
 
-void CustomCanvas::beginFrame() {
+void CustomRenderingContext::save() {
     if (m_context) {
-        m_context->beginFrame(m_width, m_height, 1.0f);
+        m_context->save();
     }
 }
 
-void CustomCanvas::endFrame() {
+void CustomRenderingContext::restore() {
     if (m_context) {
-        m_context->endFrame();
+        m_context->restore();
     }
 }
 
-rendering::Color CustomCanvas::createColor(unsigned int color) {
-    // Extract color components
-    unsigned char r = (color >> 16) & 0xFF;
-    unsigned char g = (color >> 8) & 0xFF;
-    unsigned char b = color & 0xFF;
-    unsigned char a = (color >> 24) & 0xFF;
-    
-    // Create color object
-    rendering::Color renderColor;
-    renderColor.r = r;
-    renderColor.g = g;
-    renderColor.b = b;
-    renderColor.a = a / 255.0f;
-    
-    return renderColor;
+void CustomRenderingContext::translate(float x, float y) {
+    if (m_context) {
+        m_context->translate(x, y);
+    }
 }
 
-rendering::Paint CustomCanvas::createPaint(unsigned int color) {
-    rendering::Paint paint;
-    paint.setColor(createColor(color));
-    return paint;
+std::string CustomRenderingContext::toASCII(int width, int height) {
+    // Simple ASCII art conversion
+    std::stringstream ss;
+    
+    // Draw border
+    ss << "+" << std::string(width, '-') << "+" << std::endl;
+    
+    // Draw content area
+    for (int y = 0; y < height; y++) {
+        ss << "|";
+        
+        // For each character in the line
+        for (int x = 0; x < width; x++) {
+            // For now, just use a simple character
+            // In a real implementation, we would look at paths in the custom renderer
+            // and determine which character to use based on the fill color at each position
+            ss << " ";
+        }
+        
+        ss << "|" << std::endl;
+    }
+    
+    // Draw bottom border
+    ss << "+" << std::string(width, '-') << "+" << std::endl;
+    
+    return ss.str();
 }
 
-} // namespace ui
-} // namespace browser
+} // namespace rendering
+} 

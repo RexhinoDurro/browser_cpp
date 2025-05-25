@@ -71,7 +71,11 @@ void CustomRenderingContext::fillRect(float x, float y, float width, float heigh
     
     m_context->beginPath();
     m_context->rect(x, y, width, height);
-    m_context->setFillPaint(Paint(m_fillColor));
+    
+    // Use the setColor method instead of constructor
+    Paint paint;
+    paint.setColor(m_fillColor);
+    m_context->setFillPaint(paint);
     m_context->fill();
 }
 
@@ -84,7 +88,11 @@ void CustomRenderingContext::strokeRect(float x, float y, float width, float hei
     
     m_context->beginPath();
     m_context->rect(x, y, width, height);
-    m_context->setStrokePaint(Paint(m_strokeColor));
+    
+    // Use the setColor method instead of constructor
+    Paint paint;
+    paint.setColor(m_strokeColor);
+    m_context->setStrokePaint(paint);
     m_context->setStrokeWidth(lineWidth);
     m_context->stroke();
 }
@@ -97,7 +105,11 @@ void CustomRenderingContext::drawText(const std::string& text, float x, float y,
     if (!m_context) return;
     
     m_context->setFont(Font(fontFamily, fontSize));
-    m_context->setFillPaint(Paint(m_textColor));
+    
+    // Use the setColor method instead of constructor
+    Paint paint;
+    paint.setColor(m_textColor);
+    m_context->setFillPaint(paint);
     m_context->text(x, y, text);
 }
 
