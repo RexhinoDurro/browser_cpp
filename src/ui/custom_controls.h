@@ -5,7 +5,7 @@
 #include <functional>
 #include <memory>
 #include "window.h"
-#include "../rendering/custom_renderer.h" // Added this include to fix the Paint undefined issues
+#include "../rendering/custom_renderer.h" 
 
 namespace browser {
 namespace ui {
@@ -40,7 +40,7 @@ public:
     // Drawing and event handling
     virtual void draw(rendering::CustomRenderContext* ctx) = 0;
     virtual bool handleMouseMove(int x, int y);
-    virtual bool handleMouseButton(int button, int action, int mods);
+    virtual bool handleMouseButton(int button, int action, int mods, int x, int y);
     virtual bool handleKeyInput(int key, int scancode, int action, int mods);
     
     // Hit testing
@@ -70,7 +70,7 @@ public:
     
     // Drawing and event handling
     virtual void draw(rendering::CustomRenderContext* ctx) override;
-    virtual bool handleMouseButton(int button, int action, int mods) override;
+    virtual bool handleMouseButton(int button, int action, int mods, int x, int y) override;
     
 private:
     std::string m_text;
@@ -99,7 +99,7 @@ public:
     // Drawing and event handling
     virtual void draw(rendering::CustomRenderContext* ctx) override;
     virtual bool handleKeyInput(int key, int scancode, int action, int mods) override;
-    virtual bool handleMouseButton(int button, int action, int mods) override;
+    virtual bool handleMouseButton(int button, int action, int mods, int x, int y) override;
     
 private:
     std::string m_text;
@@ -153,7 +153,7 @@ public:
     // Drawing and event handling
     virtual void draw(rendering::CustomRenderContext* ctx) override;
     virtual bool handleMouseMove(int x, int y) override;
-    virtual bool handleMouseButton(int button, int action, int mods) override;
+    virtual bool handleMouseButton(int button, int action, int mods, int x, int y) override;
     virtual bool handleKeyInput(int key, int scancode, int action, int mods) override;
     
 private:
@@ -174,7 +174,7 @@ public:
     
     // Process input events
     bool handleMouseMove(int x, int y);
-    bool handleMouseButton(int button, int action, int mods);
+    bool handleMouseButton(int button, int action, int mods, int x, int y);
     bool handleKeyInput(int key, int scancode, int action, int mods);
     bool handleResize(int width, int height);
     

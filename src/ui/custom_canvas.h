@@ -1,4 +1,3 @@
-// src/ui/custom_canvas.h
 #ifndef BROWSER_UI_CUSTOM_CANVAS_H
 #define BROWSER_UI_CUSTOM_CANVAS_H
 
@@ -31,11 +30,12 @@ public:
     void beginFrame();
     void endFrame();
     
+    // Helper methods for color handling
+    rendering::Color createColor(unsigned int color);
+    rendering::Paint createPaint(unsigned int color);
+    
 private:
     std::shared_ptr<rendering::CustomRenderContext> m_context;
-    
-    // Convert RGBA color to Paint
-    rendering::Paint createPaint(unsigned int color);
 };
 
 } // namespace ui
