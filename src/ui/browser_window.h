@@ -3,8 +3,10 @@
 #define BROWSER_UI_BROWSER_WINDOW_H
 
 #include "window.h"
+#include "custom_controls.h"
 #include "../browser/browser.h"
 #include "../rendering/renderer.h"
+#include "../rendering/custom_render_target.h"
 #include <string>
 #include <vector>
 #include <functional>
@@ -49,7 +51,7 @@ public:
     void setBrowser(std::shared_ptr<browser::Browser> browser);
     std::shared_ptr<browser::Browser> getBrowser() const;
     
-    // Renderer access - add this method to fix the compilation error
+    // Renderer access
     void setRenderer(std::shared_ptr<rendering::Renderer> renderer) {
         m_renderer = renderer;
     }
@@ -69,6 +71,8 @@ private:
     std::shared_ptr<browser::Browser> m_browser;
     std::shared_ptr<rendering::Renderer> m_renderer;
     std::shared_ptr<rendering::RenderTarget> m_renderTarget;
+    std::shared_ptr<rendering::CustomRenderContext> m_customContext;
+    std::shared_ptr<BrowserControls> m_browserControls;
     
     // Navigation state
     std::string m_currentUrl;
@@ -77,12 +81,7 @@ private:
     bool m_isLoading;
     bool m_needsRender = false;
     
-    // UI controls
-    std::shared_ptr<Button> m_backButton;
-    std::shared_ptr<Button> m_forwardButton;
-    std::shared_ptr<Button> m_reloadButton;
-    std::shared_ptr<Button> m_stopButton;
-    std::shared_ptr<TextInput> m_addressBar;
+    // UI controls (removed individual controls, now managed by BrowserControls)
     
     // UI state
     bool m_initialized;

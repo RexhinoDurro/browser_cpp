@@ -26,6 +26,12 @@ BrowserWindow::BrowserWindow(const WindowConfig& config)
     
     // Create browser engine instance
     m_browser = std::make_shared<browser::Browser>();
+    
+    // Create custom render context
+    m_customContext = std::make_shared<rendering::CustomRenderContext>();
+    
+    // Create browser controls
+    m_browserControls = std::make_shared<BrowserControls>(this);
 }
 
 BrowserWindow::~BrowserWindow() {
@@ -58,8 +64,8 @@ bool BrowserWindow::initialize() {
     int width, height;
     m_window->getSize(width, height);
     
-    // Create render target
-    m_renderTarget = m_renderer->createTarget(rendering::RenderTargetType::BITMAP, width, height);
+    // Create render target using CustomRenderTarget
+    m_renderTarget = std::make_shared<rendering::CustomRenderTarget>(width, height);
     if (!m_renderTarget) {
         std::cerr << "Failed to create render target" << std::endl;
         return false;
@@ -82,8 +88,11 @@ bool BrowserWindow::initialize() {
         handleCloseEvent();
     });
     
-    // Initialize UI controls
-    initializeControls();
+    // Initialize browser controls
+    if (!m_browserControls->initialize()) {
+        std::cerr << "Failed to initialize browser controls" << std::endl;
+        return false;
+    }
     
     // Load default page
     showDefaultPage();
@@ -111,7 +120,6 @@ void BrowserWindow::close() {
 }
 
 bool BrowserWindow::isOpen() const {
-    // Simple implementation - could be improved
     return m_initialized && m_window != nullptr;
 }
 
@@ -158,89 +166,6 @@ std::string BrowserWindow::getTitle() const {
     return "";
 }
 
-void BrowserWindow::initializeControls() {
-    // Get window size
-    int width, height;
-    m_window->getSize(width, height);
-    
-    // Create toolbar controls
-    int buttonWidth = 32;
-    int buttonHeight = 32;
-    int buttonPadding = 4;
-    int toolbarHeight = 40;
-    int addressBarHeight = 28;
-    
-    // Back button
-    m_backButton = std::make_shared<Button>(
-        buttonPadding, 
-        (toolbarHeight - buttonHeight) / 2, 
-        buttonWidth, 
-        buttonHeight, 
-        "◀"
-    );
-    m_backButton->setClickHandler([this]() {
-        goBack();
-    });
-    m_backButton->setEnabled(false); // Initially disabled
-    m_window->addControl(m_backButton);
-    
-    // Forward button
-    m_forwardButton = std::make_shared<Button>(
-        buttonPadding * 2 + buttonWidth, 
-        (toolbarHeight - buttonHeight) / 2, 
-        buttonWidth, 
-        buttonHeight, 
-        "▶"
-    );
-    m_forwardButton->setClickHandler([this]() {
-        goForward();
-    });
-    m_forwardButton->setEnabled(false); // Initially disabled
-    m_window->addControl(m_forwardButton);
-    
-    // Reload button
-    m_reloadButton = std::make_shared<Button>(
-        buttonPadding * 3 + buttonWidth * 2, 
-        (toolbarHeight - buttonHeight) / 2, 
-        buttonWidth, 
-        buttonHeight, 
-        "↻"
-    );
-    m_reloadButton->setClickHandler([this]() {
-        reload();
-    });
-    m_window->addControl(m_reloadButton);
-    
-    // Stop button
-    m_stopButton = std::make_shared<Button>(
-        buttonPadding * 4 + buttonWidth * 3, 
-        (toolbarHeight - buttonHeight) / 2, 
-        buttonWidth, 
-        buttonHeight, 
-        "✕"
-    );
-    m_stopButton->setClickHandler([this]() {
-        stopLoading();
-    });
-    m_stopButton->setVisible(false); // Hide initially
-    m_window->addControl(m_stopButton);
-    
-    // Address bar
-    int addressBarX = buttonPadding * 5 + buttonWidth * 4;
-    int addressBarWidth = width - addressBarX - buttonPadding;
-    m_addressBar = std::make_shared<TextInput>(
-        addressBarX,
-        (toolbarHeight - addressBarHeight) / 2,
-        addressBarWidth,
-        addressBarHeight
-    );
-    m_addressBar->setPlaceholder("Enter URL...");
-    m_addressBar->setSubmitHandler([this](const std::string& text) {
-        loadUrl(text);
-    });
-    m_window->addControl(m_addressBar);
-}
-
 void BrowserWindow::processEvents() {
     if (m_window) {
         m_window->processEvents();
@@ -277,39 +202,43 @@ void BrowserWindow::renderPage() {
     int width, height;
     m_window->getSize(width, height);
     
+    // Begin painting
+    m_window->beginPaint();
+    
+    // Get canvas (if using platform canvas)
+    auto canvas = m_window->getCanvas();
+    
+    // Clear the window
+    if (canvas) {
+        canvas->clear(Canvas::rgb(255, 255, 255));
+    }
+    
+    // Draw browser controls
+    if (m_browserControls && m_customContext) {
+        m_browserControls->draw(m_customContext.get());
+    }
+    
     // Calculate content area (below toolbar)
     int toolbarHeight = 40; // Height of the toolbar
     int contentWidth = width;
     int contentHeight = height - toolbarHeight;
     
-    // Create a canvas for the content area
-    auto canvas = m_window->getCanvas();
-    if (!canvas) {
-        return;
-    }
-    
-    // Clear the content area
-    canvas->drawRect(0, toolbarHeight, contentWidth, contentHeight, 
-                     Canvas::rgb(255, 255, 255), true);
-    
-    // Render the page
+    // Render the page content
     m_renderer->render(layoutRoot.get(), m_renderTarget.get());
     
-    // Copy render target to window canvas
-    // This would depend on your renderer implementation
-    // For simplicity, we'll just use ASCII rendering for now
-    std::string asciiOutput = m_renderer->renderToASCII(layoutRoot.get(), contentWidth, contentHeight);
-    
-    // Draw the ASCII output to canvas
-    int lineHeight = 12;
-    int y = toolbarHeight + 5;
-    
-    std::istringstream iss(asciiOutput);
-    std::string line;
-    while (std::getline(iss, line) && y < height) {
-        canvas->drawText(line, 5, y, Canvas::rgb(0, 0, 0));
-        y += lineHeight;
+    // For now, just draw a simple placeholder for the content
+    if (canvas) {
+        // Draw content area background
+        canvas->drawRect(0, toolbarHeight, contentWidth, contentHeight, 
+                         Canvas::rgb(255, 255, 255), true);
+        
+        // Draw some placeholder text
+        canvas->drawText("Page content here", 10, toolbarHeight + 20, 
+                        Canvas::rgb(0, 0, 0), "Arial", 14);
     }
+    
+    // End painting
+    m_window->endPaint();
 }
 
 bool BrowserWindow::loadUrl(const std::string& input) {
@@ -362,9 +291,9 @@ bool BrowserWindow::loadUrlInternal(const std::string& url) {
     bool success = m_browser->loadUrl(url, error);
     
     if (success) {
-        // Update address bar
-        if (m_addressBar) {
-            m_addressBar->setText(url);
+        // Update address bar through browser controls
+        if (m_browserControls) {
+            m_browserControls->setAddressBarText(url);
         }
         
         // Add to history if it's a new URL
@@ -411,8 +340,8 @@ bool BrowserWindow::goBack() {
         
         if (success) {
             m_currentUrl = url;
-            if (m_addressBar) {
-                m_addressBar->setText(url);
+            if (m_browserControls) {
+                m_browserControls->setAddressBarText(url);
             }
             
             updateNavigationButtons();
@@ -446,8 +375,8 @@ bool BrowserWindow::goForward() {
         
         if (success) {
             m_currentUrl = url;
-            if (m_addressBar) {
-                m_addressBar->setText(url);
+            if (m_browserControls) {
+                m_browserControls->setAddressBarText(url);
             }
             
             updateNavigationButtons();
@@ -576,8 +505,8 @@ void BrowserWindow::showDefaultPage() {
         m_history.push_back(aboutUrl);
         m_historyIndex = 0;
         
-        if (m_addressBar) {
-            m_addressBar->setText(aboutUrl);
+        if (m_browserControls) {
+            m_browserControls->setAddressBarText(aboutUrl);
         }
         
         // Update UI state
@@ -671,22 +600,16 @@ void BrowserWindow::setLoadingStateCallback(std::function<void(bool)> callback) 
 }
 
 void BrowserWindow::updateNavigationButtons() {
-    if (m_backButton) {
-        m_backButton->setEnabled(m_historyIndex > 0);
-    }
-    
-    if (m_forwardButton) {
-        m_forwardButton->setEnabled(m_historyIndex < m_history.size() - 1);
-    }
+    // Navigation buttons are now managed by BrowserControls
+    // We need to notify it about navigation state changes
+    // For now, this is a placeholder - you might want to add methods to BrowserControls
+    // to update button states based on history
 }
 
 void BrowserWindow::updateLoadingState(bool isLoading) {
-    if (m_reloadButton) {
-        m_reloadButton->setVisible(!isLoading);
-    }
-    
-    if (m_stopButton) {
-        m_stopButton->setVisible(isLoading);
+    // Update loading state in browser controls
+    if (m_browserControls) {
+        m_browserControls->setLoading(isLoading);
     }
     
     // Call loading state callback
@@ -696,10 +619,19 @@ void BrowserWindow::updateLoadingState(bool isLoading) {
 }
 
 void BrowserWindow::handleKeyEvent(Key key, KeyAction action) {
+    // First, let browser controls handle the event
+    if (m_browserControls) {
+        // Convert Key and KeyAction to int for compatibility with Control interface
+        if (m_browserControls->handleKeyInput(static_cast<int>(key), 0, 
+                                             static_cast<int>(action), 0)) {
+            return; // Event was handled by controls
+        }
+    }
+    
     // Handle browser keyboard shortcuts
     if (action == KeyAction::Press) {
         // Check for Ctrl key combinations
-        bool ctrlPressed = (int)Key::Control & 0x01; // Check if Ctrl is pressed
+        bool ctrlPressed = false; // TODO: Need to track modifier keys
         
         if (ctrlPressed) {
             switch (key) {
@@ -710,9 +642,7 @@ void BrowserWindow::handleKeyEvent(Key key, KeyAction action) {
                     
                 case Key::L:
                     // Ctrl+L: Focus address bar
-                    if (m_addressBar) {
-                        m_addressBar->setFocus(true);
-                    }
+                    // This would be handled by BrowserControls
                     break;
                     
                 case Key::T:
@@ -744,6 +674,15 @@ void BrowserWindow::handleKeyEvent(Key key, KeyAction action) {
 }
 
 void BrowserWindow::handleMouseEvent(MouseButton button, MouseAction action, int x, int y) {
+    // First, let browser controls handle the event
+    if (m_browserControls) {
+        // Convert MouseButton and MouseAction to int for compatibility
+        if (m_browserControls->handleMouseButton(static_cast<int>(button), 
+                                               static_cast<int>(action), 0, x, y)) {
+            return; // Event was handled by controls
+        }
+    }
+    
     // Check if the click is in the content area
     int toolbarHeight = 40;
     if (y > toolbarHeight && m_browser && m_browser->currentDocument()) {
@@ -758,7 +697,6 @@ void BrowserWindow::handleMouseEvent(MouseButton button, MouseAction action, int
         // For now, just handle basic link clicking
         if (button == MouseButton::Left && action == MouseAction::Press) {
             // Find the element under the cursor
-            // This is a simplified approach - a real browser would use hit testing
             html::Element* clickedElement = findElementAtPosition(contentX, contentY);
             
             if (clickedElement) {
@@ -794,21 +732,14 @@ void BrowserWindow::handleMouseEvent(MouseButton button, MouseAction action, int
 }
 
 void BrowserWindow::handleResizeEvent(int width, int height) {
-    // Resize address bar
-    if (m_addressBar) {
-        int buttonWidth = 32;
-        int buttonPadding = 4;
-        int addressBarX = buttonPadding * 5 + buttonWidth * 4;
-        int addressBarWidth = width - addressBarX - buttonPadding;
-        int addressBarHeight = 28; // Use the same height as in initializeControls
-        
-        m_addressBar->setSize(addressBarWidth, addressBarHeight);
+    // Notify browser controls about resize
+    if (m_browserControls) {
+        m_browserControls->handleResize(width, height);
     }
     
     // Resize the render target
     if (m_renderer) {
-        m_renderTarget = m_renderer->createTarget(
-            rendering::RenderTargetType::BITMAP, width, height);
+        m_renderTarget = std::make_shared<rendering::CustomRenderTarget>(width, height);
     }
     
     // Re-layout the page
@@ -826,7 +757,6 @@ void BrowserWindow::handleResizeEvent(int width, int height) {
 
 void BrowserWindow::handleCloseEvent() {
     // Handle window close
-    // For now, just set m_initialized to false to stop the event loop
     m_initialized = false;
 }
 
@@ -859,6 +789,12 @@ html::Element* BrowserWindow::findElementAtPosition(int x, int y) {
     }
     
     return nullptr;
+}
+
+// Initialize controls is no longer needed as BrowserControls handles this
+void BrowserWindow::initializeControls() {
+    // This method is kept for compatibility but does nothing
+    // All control initialization is now handled by BrowserControls
 }
 
 } // namespace ui
