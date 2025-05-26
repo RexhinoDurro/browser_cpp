@@ -1,8 +1,9 @@
 #ifndef BROWSER_PAINT_SYSTEM_H
 #define BROWSER_PAINT_SYSTEM_H
 
-#include "renderer.h"
 #include "../layout/box_model.h"
+#include "render_target.h"
+#include "custom_renderer.h"
 #include <memory>
 #include <vector>
 #include <map>
@@ -197,7 +198,7 @@ public:
     float thickness() const { return m_thickness; }
     
     // Paint method
-    virtual void paint(RenderingContext* context);
+    virtual void paint(RenderingContext* context) override;
     
 private:
     float m_x1, m_y1, m_x2, m_y2;

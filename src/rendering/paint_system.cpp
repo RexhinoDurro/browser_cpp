@@ -1,6 +1,8 @@
 #include "paint_system.h"
+#include "custom_render_target.h"
 #include <iostream>
 #include <algorithm>
+#include <cmath>
 
 namespace browser {
 namespace rendering {
@@ -36,9 +38,13 @@ void BackgroundDisplayItem::paint(RenderingContext* context) {
         return;
     }
     
-    // Set fill color and draw rectangle
-    context->setFillColor(m_color);
-    context->fillRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height);
+    // Try to cast to our custom context type
+    auto customContext = dynamic_cast<CustomRenderingContext*>(context);
+    if (customContext) {
+        // Set fill color and draw rectangle
+        customContext->setFillColor(m_color);
+        customContext->fillRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -65,15 +71,16 @@ void BorderDisplayItem::paint(RenderingContext* context) {
         return;
     }
     
-    // Set stroke color
-    context->setStrokeColor(m_color);
-    
-    // Draw border rectangle
-    float maxWidth = std::max({m_topWidth, m_rightWidth, m_bottomWidth, m_leftWidth});
-    context->strokeRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height, maxWidth);
-    
-    // In a more sophisticated implementation, we'd draw each border side separately
-    // with the appropriate width and style
+    // Try to cast to our custom context type
+    auto customContext = dynamic_cast<CustomRenderingContext*>(context);
+    if (customContext) {
+        // Set stroke color
+        customContext->setStrokeColor(m_color);
+        
+        // Draw border rectangle
+        float maxWidth = std::max({m_topWidth, m_rightWidth, m_bottomWidth, m_leftWidth});
+        customContext->strokeRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height, maxWidth);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -100,11 +107,15 @@ void TextDisplayItem::paint(RenderingContext* context) {
         return;
     }
     
-    // Set text color
-    context->setTextColor(m_color);
-    
-    // Draw text
-    context->drawText(m_text, m_x, m_y, m_fontFamily, m_fontSize);
+    // Try to cast to our custom context type
+    auto customContext = dynamic_cast<CustomRenderingContext*>(context);
+    if (customContext) {
+        // Set text color
+        customContext->setTextColor(m_color);
+        
+        // Draw text
+        customContext->drawText(m_text, m_x, m_y, m_fontFamily, m_fontSize);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -126,17 +137,21 @@ void ImageDisplayItem::paint(RenderingContext* context) {
         return;
     }
     
-    // In a real implementation, we would load the image and draw it here
-    // For now, just draw a placeholder rectangle
-    context->setFillColor(Color(200, 200, 200)); // Light gray
-    context->fillRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height);
-    
-    context->setStrokeColor(Color(100, 100, 100)); // Dark gray
-    context->strokeRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height, 1.0f);
-    
-    // Draw image URL as text
-    context->setTextColor(Color(0, 0, 0));
-    context->drawText("Image: " + m_url, m_rect.x + 5, m_rect.y + 15, "Arial", 10.0f);
+    // Try to cast to our custom context type
+    auto customContext = dynamic_cast<CustomRenderingContext*>(context);
+    if (customContext) {
+        // In a real implementation, we would load the image and draw it here
+        // For now, just draw a placeholder rectangle
+        customContext->setFillColor(Color(200, 200, 200)); // Light gray
+        customContext->fillRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height);
+        
+        customContext->setStrokeColor(Color(100, 100, 100)); // Dark gray
+        customContext->strokeRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height, 1.0f);
+        
+        // Draw image URL as text
+        customContext->setTextColor(Color(0, 0, 0));
+        customContext->drawText("Image: " + m_url, m_rect.x + 5, m_rect.y + 15, "Arial", 10.0f);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -159,12 +174,16 @@ void RectDisplayItem::paint(RenderingContext* context) {
         return;
     }
     
-    if (m_fill) {
-        context->setFillColor(m_color);
-        context->fillRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height);
-    } else {
-        context->setStrokeColor(m_color);
-        context->strokeRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height, 1.0f);
+    // Try to cast to our custom context type
+    auto customContext = dynamic_cast<CustomRenderingContext*>(context);
+    if (customContext) {
+        if (m_fill) {
+            customContext->setFillColor(m_color);
+            customContext->fillRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height);
+        } else {
+            customContext->setStrokeColor(m_color);
+            customContext->strokeRect(m_rect.x, m_rect.y, m_rect.width, m_rect.height, 1.0f);
+        }
     }
 }
 
@@ -187,8 +206,12 @@ void TransformDisplayItem::paint(RenderingContext* context) {
         return;
     }
     
-    // Apply translation
-    context->translate(m_dx, m_dy);
+    // Try to cast to our custom context type
+    auto customContext = dynamic_cast<CustomRenderingContext*>(context);
+    if (customContext) {
+        // Apply translation
+        customContext->translate(m_dx, m_dy);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -214,6 +237,62 @@ void ClipDisplayItem::paint(RenderingContext* context) {
 }
 
 //-----------------------------------------------------------------------------
+// LineDisplayItem Implementation
+//-----------------------------------------------------------------------------
+
+LineDisplayItem::LineDisplayItem(float x1, float y1, float x2, float y2, const Color& color, float thickness)
+    : DisplayItem(DisplayItemType::LINE)
+    , m_x1(x1)
+    , m_y1(y1)
+    , m_x2(x2)
+    , m_y2(y2)
+    , m_color(color)
+    , m_thickness(thickness)
+{
+}
+
+LineDisplayItem::~LineDisplayItem() {
+}
+
+void LineDisplayItem::paint(RenderingContext* context) {
+    if (!context) {
+        return;
+    }
+    
+    // Try to cast to our custom context type
+    auto customContext = dynamic_cast<CustomRenderingContext*>(context);
+    if (customContext) {
+        // For now, we'll implement this as a thin rectangle
+        // In a real implementation, we'd have a proper line drawing method
+        customContext->setFillColor(m_color);
+        
+        // Calculate line as a rectangle
+        float dx = m_x2 - m_x1;
+        float dy = m_y2 - m_y1;
+        float length = std::sqrt(dx * dx + dy * dy);
+        
+        if (length > 0) {
+            // Normalize direction
+            dx /= length;
+            dy /= length;
+            
+            // Perpendicular vector for thickness
+            float px = -dy * m_thickness * 0.5f;
+            float py = dx * m_thickness * 0.5f;
+            
+            // Draw as a filled rectangle
+            // This is a simplified approach
+            customContext->fillRect(
+                std::min(m_x1, m_x2), 
+                std::min(m_y1, m_y2),
+                std::abs(m_x2 - m_x1) + m_thickness,
+                std::abs(m_y2 - m_y1) + m_thickness
+            );
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
 // DisplayList Implementation
 //-----------------------------------------------------------------------------
 
@@ -235,18 +314,22 @@ void DisplayList::paint(RenderingContext* context) const {
         return;
     }
     
-    // Save the context state
-    context->save();
-    
-    // Paint all items in order
-    for (const auto& item : m_items) {
-        if (item) {
-            item->paint(context);
+    // Try to cast to our custom context type
+    auto customContext = dynamic_cast<CustomRenderingContext*>(context);
+    if (customContext) {
+        // Save the context state
+        customContext->save();
+        
+        // Paint all items in order
+        for (const auto& item : m_items) {
+            if (item) {
+                item->paint(context);
+            }
         }
+        
+        // Restore the context state
+        customContext->restore();
     }
-    
-    // Restore the context state
-    context->restore();
 }
 
 void DisplayList::clear() {
@@ -283,6 +366,10 @@ void PaintContext::drawImage(const std::string& url, const layout::Rect& rect) {
 
 void PaintContext::drawRect(const layout::Rect& rect, const Color& color, bool fill) {
     m_displayList.appendItem(std::make_unique<RectDisplayItem>(rect, color, fill));
+}
+
+void PaintContext::drawLine(float x1, float y1, float x2, float y2, const Color& color, float thickness) {
+    m_displayList.appendItem(std::make_unique<LineDisplayItem>(x1, y1, x2, y2, color, thickness));
 }
 
 void PaintContext::transform(float dx, float dy) {
@@ -362,7 +449,6 @@ void PaintSystem::paintBox(layout::Box* box, PaintContext& context) {
     
     // Paint children
     for (const auto& child : box->children()) {
-        // FIX: Use paintBox by reference instead of creating a copy
         paintBox(child.get(), context);
     }
     
