@@ -96,7 +96,13 @@ void Renderer::renderDisplayList(const DisplayList& displayList, RenderTarget* t
     }
     
     // Get the rendering context from the target
-    RenderingContext* context = target->context();
+    RenderingContext* baseContext = target->context();
+    if (!baseContext) {
+        return;
+    }
+    
+    // Try to cast to our custom context type
+    auto context = dynamic_cast<CustomRenderingContext*>(baseContext);
     if (!context) {
         return;
     }
@@ -109,7 +115,82 @@ void Renderer::renderDisplayList(const DisplayList& displayList, RenderTarget* t
     
     // Render the display list to the context
     if (m_paintSystem) {
-        m_paintSystem->paintDisplayList(displayList, context);
+        // Paint each display item manually since we're using our custom context
+        for (const auto& item : displayList.items()) {
+            if (!item) continue;
+            
+            switch (item->type()) {
+                case DisplayItemType::BACKGROUND: {
+                    auto bgItem = static_cast<BackgroundDisplayItem*>(item.get());
+                    context->setFillColor(bgItem->color());
+                    context->fillRect(bgItem->rect().x, bgItem->rect().y, 
+                                    bgItem->rect().width, bgItem->rect().height);
+                    break;
+                }
+                
+                case DisplayItemType::BORDER: {
+                    auto borderItem = static_cast<BorderDisplayItem*>(item.get());
+                    context->setStrokeColor(borderItem->color());
+                    float maxWidth = std::max({borderItem->topWidth(), borderItem->rightWidth(), 
+                                             borderItem->bottomWidth(), borderItem->leftWidth()});
+                    context->strokeRect(borderItem->rect().x, borderItem->rect().y, 
+                                      borderItem->rect().width, borderItem->rect().height, maxWidth);
+                    break;
+                }
+                
+                case DisplayItemType::TEXT: {
+                    auto textItem = static_cast<TextDisplayItem*>(item.get());
+                    context->setTextColor(textItem->color());
+                    context->drawText(textItem->text(), textItem->x(), textItem->y(), 
+                                    textItem->fontFamily(), textItem->fontSize());
+                    break;
+                }
+                
+                case DisplayItemType::IMAGE: {
+                    // Draw a placeholder for images
+                    auto imageItem = static_cast<ImageDisplayItem*>(item.get());
+                    context->setFillColor(Color(200, 200, 200)); // Light gray
+                    context->fillRect(imageItem->rect().x, imageItem->rect().y, 
+                                    imageItem->rect().width, imageItem->rect().height);
+                    
+                    context->setStrokeColor(Color(100, 100, 100)); // Dark gray
+                    context->strokeRect(imageItem->rect().x, imageItem->rect().y, 
+                                      imageItem->rect().width, imageItem->rect().height, 1.0f);
+                    
+                    // Draw image URL as text
+                    context->setTextColor(Color(0, 0, 0));
+                    context->drawText("Image: " + imageItem->url(), 
+                                    imageItem->rect().x + 5, imageItem->rect().y + 15, 
+                                    "sans", 10.0f);
+                    break;
+                }
+                
+                case DisplayItemType::RECT: {
+                    auto rectItem = static_cast<RectDisplayItem*>(item.get());
+                    if (rectItem->filled()) {
+                        context->setFillColor(rectItem->color());
+                        context->fillRect(rectItem->rect().x, rectItem->rect().y, 
+                                        rectItem->rect().width, rectItem->rect().height);
+                    } else {
+                        context->setStrokeColor(rectItem->color());
+                        context->strokeRect(rectItem->rect().x, rectItem->rect().y, 
+                                          rectItem->rect().width, rectItem->rect().height, 1.0f);
+                    }
+                    break;
+                }
+                
+                case DisplayItemType::TRANSFORM: {
+                    auto transformItem = static_cast<TransformDisplayItem*>(item.get());
+                    context->translate(transformItem->dx(), transformItem->dy());
+                    break;
+                }
+                
+                case DisplayItemType::CLIP: {
+                    // Clipping not implemented in our simple context
+                    break;
+                }
+            }
+        }
     }
 }
 

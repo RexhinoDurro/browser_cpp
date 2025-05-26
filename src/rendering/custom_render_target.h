@@ -9,8 +9,8 @@
 namespace browser {
 namespace rendering {
 
-// Forward declarations
-class CustomRenderContext;
+// Forward declaration is not needed since we include custom_renderer.h
+// class CustomRenderContext;
 
 // Custom render target implementation
 class CustomRenderTarget : public RenderTarget {
@@ -28,7 +28,7 @@ public:
     CustomRenderContext* getCustomContext() const { return m_context.get(); }
     
     // Convert to string representation (ASCII art)
-    std::string toString();
+    virtual std::string toString() override;
     
 private:
     int m_width;
@@ -59,8 +59,8 @@ public:
     void restore();
     void translate(float x, float y);
     
-    // Convert to ASCII representation
-    std::string toASCII(int width, int height);
+    // Convert to ASCII representation - implementing the virtual method
+    virtual std::string toASCII(int width, int height) override;
     
 private:
     CustomRenderContext* m_context;

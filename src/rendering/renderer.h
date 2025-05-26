@@ -3,6 +3,7 @@
 
 #include "../layout/layout_engine.h"
 #include "../css/style_resolver.h"
+#include "render_target.h"
 #include "custom_renderer.h"  // Include this to get the Color class
 #include <string>
 #include <memory>
@@ -17,10 +18,10 @@ class PaintSystem;
 class DisplayList;
 class CustomRenderContext;
 
-// Abstract rendering context interface
-class RenderingContext {
+// Extended rendering context interface with drawing operations
+class ExtendedRenderingContext : public RenderingContext {
 public:
-    virtual ~RenderingContext() {}
+    virtual ~ExtendedRenderingContext() {}
     
     // Drawing operations
     virtual void setFillColor(const Color& color) = 0;
@@ -36,34 +37,6 @@ public:
     virtual void save() = 0;
     virtual void restore() = 0;
     virtual void translate(float x, float y) = 0;
-    
-    // Output (for console renderers)
-    virtual std::string toASCII(int width, int height) = 0;
-};
-
-// Render target types
-enum class RenderTargetType {
-    CONSOLE,   // ASCII rendering to console
-    BITMAP     // Bitmap (in-memory) rendering
-};
-
-// Render target interface
-class RenderTarget {
-public:
-    virtual ~RenderTarget() {}
-    
-    // Get the rendering context
-    virtual RenderingContext* context() = 0;
-    
-    // Get the target type
-    virtual RenderTargetType type() const = 0;
-    
-    // Get the width and height
-    virtual int width() const = 0;
-    virtual int height() const = 0;
-    
-    // Convert to string (for console targets)
-    virtual std::string toString() = 0;
 };
 
 // Renderer class for drawing the layout
