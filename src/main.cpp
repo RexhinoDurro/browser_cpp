@@ -186,7 +186,8 @@ int main(int argc, char* argv[]) {
 #ifdef _WIN32
         SetConsoleCtrlHandler([](DWORD) -> BOOL {
             shutdownHandler(0);
-            return TRUE;
+            // shutdownHandler calls exit(), so this is unreachable
+            // but needed to satisfy the compiler
         }, TRUE);
 #else
         signal(SIGINT, shutdownHandler);

@@ -212,6 +212,19 @@ public:
     DisplayList();
     ~DisplayList();
     
+    // Delete copy constructor and copy assignment operator
+    DisplayList(const DisplayList&) = delete;
+    DisplayList& operator=(const DisplayList&) = delete;
+    
+    // Define move constructor and move assignment operator
+    DisplayList(DisplayList&& other) noexcept : m_items(std::move(other.m_items)) {}
+    DisplayList& operator=(DisplayList&& other) noexcept {
+        if (this != &other) {
+            m_items = std::move(other.m_items);
+        }
+        return *this;
+    }
+    
     // Add an item to the list
     void appendItem(std::unique_ptr<DisplayItem> item);
     
@@ -233,6 +246,14 @@ class PaintContext {
 public:
     PaintContext();
     ~PaintContext();
+    
+    // Delete copy constructor and copy assignment operator
+    PaintContext(const PaintContext&) = delete;
+    PaintContext& operator=(const PaintContext&) = delete;
+    
+    // Define move constructor and move assignment operator
+    PaintContext(PaintContext&& other) noexcept = default;
+    PaintContext& operator=(PaintContext&& other) noexcept = default;
     
     // Get the display list
     const DisplayList& displayList() const { return m_displayList; }

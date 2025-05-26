@@ -184,9 +184,6 @@ private:
     void* m_sslContext;  // Opaque pointer to SSL context
 };
 
-// Helper function for case-insensitive string comparison
-int strcasecmp(const char* s1, const char* s2);
-
 } // namespace networking
 } // namespace browser
 

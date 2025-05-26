@@ -1,232 +1,14 @@
 // js_engine.cpp - Fixed implementation
 #include "js_engine.h"
-#include "js_value.h"  // Make sure this is included
+#include "js_value.h"  // Include the actual JSValue definitions
+#include "js_interpreter.h"
 #include <iostream>
 #include <sstream>
-#include <limits>  // for std::numeric_limits
-#include <cmath>   // for std::isnan
+#include <limits>   // For std::numeric_limits
+#include <cmath>    // For std::isnan, std::isinf
 
 namespace browser {
 namespace custom_js {
-
-// JSValue Implementation
-JSValue::JSValue() : m_type(JSValueType::UNDEFINED) {
-    m_value = nullptr;
-}
-
-JSValue::JSValue(std::nullptr_t) : m_type(JSValueType::NULL_TYPE) {
-    m_value = nullptr;
-}
-
-JSValue::JSValue(bool value) : m_type(JSValueType::BOOLEAN) {
-    m_value = value;
-}
-
-JSValue::JSValue(double value) : m_type(JSValueType::NUMBER) {
-    m_value = value;
-}
-
-JSValue::JSValue(const std::string& value) : m_type(JSValueType::STRING) {
-    m_value = value;
-}
-
-JSValue::JSValue(std::shared_ptr<JSObject> object) : m_type(JSValueType::OBJECT) {
-    m_value = object;
-}
-
-JSValue::JSValue(std::shared_ptr<JSFunction> function) : m_type(JSValueType::FUNCTION) {
-    m_value = function;
-}
-
-JSValue::JSValue(std::shared_ptr<JSArray> array) : m_type(JSValueType::ARRAY) {
-    m_value = array;
-}
-
-// Type conversions
-bool JSValue::toBoolean() const {
-    switch (m_type) {
-        case JSValueType::UNDEFINED:
-        case JSValueType::NULL_TYPE:
-            return false;
-        case JSValueType::BOOLEAN:
-            return std::get<bool>(m_value);
-        case JSValueType::NUMBER: {
-            double num = std::get<double>(m_value);
-            return num != 0.0 && !std::isnan(num);
-        }
-        case JSValueType::STRING:
-            return !std::get<std::string>(m_value).empty();
-        case JSValueType::OBJECT:
-        case JSValueType::FUNCTION:
-            return true;
-        default:
-            return false;
-    }
-}
-
-double JSValue::toNumber() const {
-    switch (m_type) {
-        case JSValueType::UNDEFINED:
-            return std::numeric_limits<double>::quiet_NaN();
-        case JSValueType::NULL_TYPE:
-            return 0.0;
-        case JSValueType::BOOLEAN:
-            return std::get<bool>(m_value) ? 1.0 : 0.0;
-        case JSValueType::NUMBER:
-            return std::get<double>(m_value);
-        case JSValueType::STRING:
-            try {
-                return std::stod(std::get<std::string>(m_value));
-            } catch (...) {
-                return std::numeric_limits<double>::quiet_NaN();
-            }
-        default:
-            return std::numeric_limits<double>::quiet_NaN();
-    }
-}
-
-std::string JSValue::toString() const {
-    switch (m_type) {
-        case JSValueType::UNDEFINED:
-            return "undefined";
-        case JSValueType::NULL_TYPE:
-            return "null";
-        case JSValueType::BOOLEAN:
-            return std::get<bool>(m_value) ? "true" : "false";
-        case JSValueType::NUMBER:
-            return std::to_string(std::get<double>(m_value));
-        case JSValueType::STRING:
-            return std::get<std::string>(m_value);
-        case JSValueType::OBJECT:
-            return "[object Object]";
-        case JSValueType::FUNCTION:
-            return "[object Function]";
-        default:
-            return "";
-    }
-}
-
-std::shared_ptr<JSObject> JSValue::toObject() const {
-    if (m_type == JSValueType::OBJECT) {
-        return std::get<std::shared_ptr<JSObject>>(m_value);
-    }
-    return nullptr;
-}
-
-std::shared_ptr<JSFunction> JSValue::toFunction() const {
-    if (m_type == JSValueType::FUNCTION) {
-        return std::get<std::shared_ptr<JSFunction>>(m_value);
-    }
-    return nullptr;
-}
-
-std::shared_ptr<JSArray> JSValue::toArray() const {
-    if (m_type == JSValueType::ARRAY) {
-        return std::get<std::shared_ptr<JSArray>>(m_value);
-    }
-    return nullptr;
-}
-
-// JSObject Implementation
-JSObject::JSObject() {
-}
-
-JSObject::~JSObject() {
-}
-
-JSValue JSObject::get(const std::string& key) const {
-    auto it = m_properties.find(key);
-    if (it != m_properties.end()) {
-        return it->second;
-    }
-    return JSValue(); // undefined
-}
-
-void JSObject::set(const std::string& key, const JSValue& value) {
-    m_properties[key] = value;
-}
-
-bool JSObject::has(const std::string& key) const {
-    return m_properties.find(key) != m_properties.end();
-}
-
-bool JSObject::remove(const std::string& key) {
-    auto it = m_properties.find(key);
-    if (it != m_properties.end()) {
-        m_properties.erase(it);
-        return true;
-    }
-    return false;
-}
-
-std::vector<std::string> JSObject::getPropertyNames() const {
-    std::vector<std::string> result;
-    for (const auto& pair : m_properties) {
-        result.push_back(pair.first);
-    }
-    return result;
-}
-
-// JSFunction Implementation
-JSFunction::JSFunction(NativeFunction func) : m_function(func) {
-}
-
-JSFunction::~JSFunction() {
-}
-
-JSValue JSFunction::call(const std::vector<JSValue>& args, JSValue thisValue) {
-    if (m_function) {
-        return m_function(args, thisValue);
-    }
-    return JSValue(); // undefined
-}
-
-// JSArray Implementation
-JSArray::JSArray() : JSObject() {
-    JSObject::set("length", JSValue(0.0));
-}
-
-JSArray::~JSArray() {
-}
-
-size_t JSArray::length() const {
-    JSValue lengthValue = JSObject::get("length");
-    return static_cast<size_t>(lengthValue.toNumber());
-}
-
-void JSArray::push(const JSValue& value) {
-    size_t currentLength = length();
-    JSObject::set(std::to_string(currentLength), value);
-    JSObject::set("length", JSValue(static_cast<double>(currentLength + 1)));
-}
-
-JSValue JSArray::pop() {
-    size_t currentLength = length();
-    if (currentLength == 0) {
-        return JSValue(); // undefined
-    }
-    
-    size_t lastIndex = currentLength - 1;
-    JSValue lastValue = JSObject::get(std::to_string(lastIndex));
-    JSObject::remove(std::to_string(lastIndex));
-    JSObject::set("length", JSValue(static_cast<double>(lastIndex)));
-    
-    return lastValue;
-}
-
-JSValue JSArray::get(size_t index) const {
-    return JSObject::get(std::to_string(index));
-}
-
-void JSArray::set(size_t index, const JSValue& value) {
-    JSObject::set(std::to_string(index), value);
-    
-    // Update length if necessary
-    size_t currentLength = length();
-    if (index >= currentLength) {
-        JSObject::set("length", JSValue(static_cast<double>(index + 1)));
-    }
-}
 
 // JSEngine Implementation
 JSEngine::JSEngine() : m_interpreter(nullptr) {
@@ -255,13 +37,9 @@ bool JSEngine::executeScript(const std::string& script, std::string& result, std
     }
     
     try {
-        // In a real implementation, this would:
-        // 1. Tokenize the script
-        // 2. Parse into AST
-        // 3. Execute the AST
-        
-        // For now, just a placeholder
-        result = "Script executed successfully";
+        // Execute the script using the interpreter
+        JSValue resultValue = m_interpreter->execute(script);
+        result = resultValue.toString();
         return true;
     } catch (const std::exception& e) {
         error = e.what();
@@ -272,6 +50,11 @@ bool JSEngine::executeScript(const std::string& script, std::string& result, std
 void JSEngine::defineGlobalVariable(const std::string& name, const JSValue& value) {
     if (m_globalObject) {
         m_globalObject->set(name, value);
+    }
+    
+    // Also define in interpreter's global environment
+    if (m_interpreter) {
+        m_interpreter->defineGlobalVariable(name, value);
     }
 }
 
@@ -312,6 +95,36 @@ void JSEngine::addBuiltinFunctions() {
             }
         )
     ));
+    
+    // Add isNaN
+    m_globalObject->set("isNaN", JSValue(
+        std::make_shared<JSFunction>(
+            [](const std::vector<JSValue>& args, JSValue thisValue) {
+                if (args.empty()) return JSValue(true);
+                double num = args[0].toNumber();
+                return JSValue(std::isnan(num));
+            }
+        )
+    ));
+    
+    // Add isFinite
+    m_globalObject->set("isFinite", JSValue(
+        std::make_shared<JSFunction>(
+            [](const std::vector<JSValue>& args, JSValue thisValue) {
+                if (args.empty()) return JSValue(false);
+                double num = args[0].toNumber();
+                return JSValue(!std::isnan(num) && !std::isinf(num));
+            }
+        )
+    ));
+    
+    // Define these built-in functions in the interpreter as well
+    if (m_interpreter) {
+        m_interpreter->defineGlobalVariable("parseInt", m_globalObject->get("parseInt"));
+        m_interpreter->defineGlobalVariable("parseFloat", m_globalObject->get("parseFloat"));
+        m_interpreter->defineGlobalVariable("isNaN", m_globalObject->get("isNaN"));
+        m_interpreter->defineGlobalVariable("isFinite", m_globalObject->get("isFinite"));
+    }
 }
 
 } // namespace custom_js

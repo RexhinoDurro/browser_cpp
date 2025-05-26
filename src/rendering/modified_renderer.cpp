@@ -68,11 +68,7 @@ void Renderer::render(layout::Box* rootBox, RenderTarget* target) {
             
             // Create a paint context for the root box
             PaintContext context = m_paintSystem->createContext(rootBox);
-            
-            // Paint the root box and its children to the context
             m_paintSystem->paintBox(rootBox, context);
-            
-            // Render the display list to the target using the custom context
             renderCustomDisplayList(context.displayList(), ctx);
             
             // End rendering frame
@@ -81,11 +77,7 @@ void Renderer::render(layout::Box* rootBox, RenderTarget* target) {
     } else {
         // Create a paint context for the root box
         PaintContext context = m_paintSystem->createContext(rootBox);
-        
-        // Paint the root box and its children to the context
         m_paintSystem->paintBox(rootBox, context);
-        
-        // Render the display list to the target
         renderDisplayList(context.displayList(), target);
     }
 }

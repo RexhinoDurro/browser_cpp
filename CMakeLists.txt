@@ -121,6 +121,7 @@ set(STORAGE_SOURCES
     src/storage/local_storage.h
 )
 
+# Platform-independent UI sources
 set(UI_SOURCES
     src/ui/window.cpp
     src/ui/window.h
@@ -130,11 +131,6 @@ set(UI_SOURCES
     src/ui/custom_controls.h
     src/ui/custom_canvas.cpp
     src/ui/custom_canvas.h
-    src/ui/window_macos.mm
-    src/ui/window_win32.cpp
-    src/ui/window_win32.h
-    src/ui/window_unix.h
-    
 )
 
 # Platform-specific UI sources

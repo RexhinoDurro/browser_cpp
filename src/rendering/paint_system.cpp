@@ -403,7 +403,7 @@ PaintContext PaintSystem::createContext(layout::Box* box) {
         context.transform(box->contentRect().x, box->contentRect().y);
     }
     
-    return context;
+    return context;  // This will use move semantics (RVO/NRVO)
 }
 
 void PaintSystem::paintBox(layout::Box* box, PaintContext& context) {

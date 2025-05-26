@@ -17,7 +17,7 @@ namespace networking {
 
 // Windows compatibility definition for strcasecmp
 #ifdef _WIN32
-int strcasecmp(const char* s1, const char* s2) {
+static int strcasecmp(const char* s1, const char* s2) {
     return _stricmp(s1, s2);
 }
 #endif
