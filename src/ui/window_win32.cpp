@@ -1,5 +1,6 @@
 // src/ui/window_win32.cpp - Windows platform implementation
 
+#define NOMINMAX  // Prevent Windows.h from defining min/max macros
 #include "window_win32.h"
 #include <windowsx.h> // For GET_X_LPARAM, GET_Y_LPARAM
 
@@ -198,7 +199,7 @@ void Win32Canvas::drawText(const std::string& text, int x, int y, unsigned int c
     MultiByteToWideChar(CP_UTF8, 0, fontName.c_str(), -1, &wFontName[0], fontNameLen);
 
     // Create font
-    HFONT font = CreateFont(
+    HFONT font = CreateFontW(
         fontSize,                // Height
         0,                      // Width (0 = match height)
         0,                      // Escapement
@@ -278,10 +279,10 @@ Win32Window::~Win32Window() {
 bool Win32Window::create() {
     // Register window class
     static bool classRegistered = false;
-    static LPCTSTR className = TEXT("BrowserWindowClass");
+    static LPCWSTR className = L"BrowserWindowClass";
     
     if (!classRegistered) {
-        WNDCLASS wc = { 0 };
+        WNDCLASSW wc = { 0 };
         wc.style = CS_HREDRAW | CS_VREDRAW;
         wc.lpfnWndProc = Win32Window::WindowProc;
         wc.hInstance = GetModuleHandle(NULL);
@@ -289,7 +290,7 @@ bool Win32Window::create() {
         wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
         wc.lpszClassName = className;
         
-        if (!RegisterClass(&wc)) {
+        if (!RegisterClassW(&wc)) {
             return false;
         }
         
@@ -310,7 +311,7 @@ bool Win32Window::create() {
     wchar_t* wideTitleBuffer = new wchar_t[titleLength];
     MultiByteToWideChar(CP_UTF8, 0, m_config.title.c_str(), -1, wideTitleBuffer, titleLength);
     
-    m_hwnd = CreateWindow(
+    m_hwnd = CreateWindowW(
         className,
         wideTitleBuffer,
         style,

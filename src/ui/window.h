@@ -28,6 +28,8 @@ namespace ui {
 class UIElement;
 class UIControl;
 class Canvas;
+class Button;
+class TextInput;
 
 // Platform-specific window handle
 #ifdef _WIN32
@@ -248,68 +250,10 @@ protected:
     bool m_hover;
 };
 
-// Button control
-class Button : public UIControl {
-public:
-    Button(int x, int y, int width, int height, const std::string& text);
-    virtual ~Button();
-    
-    // Button text
-    void setText(const std::string& text);
-    std::string getText() const;
-    
-    // Click event handler
-    void setClickHandler(std::function<void()> handler);
-    
-    // Drawing and event handling
-    virtual void draw(Canvas* canvas) override;
-    virtual bool handleMouseButton(MouseButton button, MouseAction action, int x, int y) override;
-    
-private:
-    std::string m_text;
-    std::function<void()> m_clickHandler;
-};
-
-// Text input control
-class TextInput : public UIControl {
-public:
-    TextInput(int x, int y, int width, int height);
-    virtual ~TextInput();
-    
-    // Text content
-    void setText(const std::string& text);
-    std::string getText() const;
-    
-    // Set placeholder text
-    void setPlaceholder(const std::string& placeholder);
-    
-    // Submit event handler (for Enter key)
-    void setSubmitHandler(std::function<void(const std::string&)> handler);
-    
-    // Text change handler
-    void setTextChangeHandler(std::function<void(const std::string&)> handler);
-    
-    // Drawing and event handling
-    virtual void draw(Canvas* canvas) override;
-    virtual bool handleKeyInput(Key key, KeyAction action) override;
-    virtual bool handleMouseButton(MouseButton button, MouseAction action, int x, int y) override;
-    
-private:
-    std::string m_text;
-    std::string m_placeholder;
-    size_t m_cursorPos;
-    size_t m_selectionStart;
-    bool m_selecting;
-    
-    std::function<void(const std::string&)> m_submitHandler;
-    std::function<void(const std::string&)> m_textChangeHandler;
-    
-    // Helper methods
-    void moveCursor(int direction, bool selecting);
-    void deletePreviousChar();
-    void deleteNextChar();
-    void insertText(const std::string& text);
-};
+// Forward declarations for UI controls
+// These are defined in custom_controls.h
+class Button;
+class TextInput;
 
 } // namespace ui
 } // namespace browser

@@ -1,4 +1,8 @@
 // Include minimal headers first
+#ifdef _WIN32
+#define NOMINMAX  // Prevent Windows.h from defining min/max macros
+#endif
+
 #include <iostream>
 #include <algorithm>
 
