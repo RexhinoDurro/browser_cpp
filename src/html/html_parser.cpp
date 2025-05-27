@@ -171,6 +171,9 @@ Token HTMLParser::nextToken() {
             case ParserState::DOCTYPE:
                 handleDOCTYPEState();
                 break;
+            case ParserState::BEFORE_DOCTYPE_NAME:
+                handleBeforeDOCTYPENameState();
+                break;
             case ParserState::DOCTYPE_NAME:
                 handleDOCTYPENameState();
                 break;
@@ -649,6 +652,31 @@ void HTMLParser::handleDOCTYPEState() {
         parseError("Missing whitespace before DOCTYPE name");
         reconsume();  // Reprocess in BEFORE_DOCTYPE_NAME state
         m_state = ParserState::BEFORE_DOCTYPE_NAME;
+    }
+}
+
+void HTMLParser::handleBeforeDOCTYPENameState() {
+    if (!hasMoreChars()) {
+        parseError("EOF in before DOCTYPE name state");
+        m_currentToken = createDOCTYPEToken("", "", "", true);  // Force quirks
+        return;
+    }
+    
+    char c = currentChar();
+    if (std::isspace(c)) {
+        // Skip whitespace
+        consumeCharacter();
+    } else if (c == '>') {
+        parseError("Missing DOCTYPE name");
+        m_currentToken = createDOCTYPEToken("", "", "", true);  // Force quirks
+        m_state = ParserState::DATA;
+        consumeCharacter();
+        return;  // Return the DOCTYPE token
+    } else {
+        // Start DOCTYPE name
+        m_tempBuffer.clear();
+        m_state = ParserState::DOCTYPE_NAME;
+        reconsume();  // Reprocess in DOCTYPE_NAME state
     }
 }
 
