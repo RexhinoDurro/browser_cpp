@@ -3,6 +3,8 @@
 #define NOMINMAX  // Prevent Windows.h from defining min/max macros
 #include "window_win32.h"
 #include <windowsx.h> // For GET_X_LPARAM, GET_Y_LPARAM
+#include <iostream>
+#include <vector>
 
 namespace browser {
 namespace ui {
@@ -13,11 +15,6 @@ std::map<HWND, Win32Window*> Win32Window::s_windowMap;
 //-----------------------------------------------------------------------------
 // Win32Canvas Implementation
 //-----------------------------------------------------------------------------
-
-// Add getGC() method to Win32Canvas
-HDC Win32Canvas::getGC() const {
-    return m_hdcMem;
-}
 
 Win32Canvas::Win32Canvas(int width, int height)
     : Canvas(width, height)
@@ -57,6 +54,10 @@ void Win32Canvas::initialize(HDC hdc) {
     
     // Select the bitmap into the memory DC
     SelectObject(m_hdcMem, m_hBitmap);
+}
+
+HDC Win32Canvas::getGC() const {
+    return m_hdcMem;
 }
 
 void Win32Canvas::clear(unsigned int color) {
@@ -195,8 +196,8 @@ void Win32Canvas::drawText(const std::string& text, int x, int y, unsigned int c
     
     // Convert fontName (UTF-8) to wide string
     int fontNameLen = MultiByteToWideChar(CP_UTF8, 0, fontName.c_str(), -1, NULL, 0);
-    std::wstring wFontName(fontNameLen, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, fontName.c_str(), -1, &wFontName[0], fontNameLen);
+    std::vector<wchar_t> wFontName(fontNameLen);
+    MultiByteToWideChar(CP_UTF8, 0, fontName.c_str(), -1, wFontName.data(), fontNameLen);
 
     // Create font
     HFONT font = CreateFontW(
@@ -213,7 +214,7 @@ void Win32Canvas::drawText(const std::string& text, int x, int y, unsigned int c
         CLIP_DEFAULT_PRECIS,    // ClipPrecision
         DEFAULT_QUALITY,        // Quality
         DEFAULT_PITCH | FF_DONTCARE, // PitchAndFamily
-        wFontName.c_str()       // Font name (wide string)
+        wFontName.data()        // Font name (wide string)
     );
     
     HFONT oldFont = (HFONT)SelectObject(m_hdcMem, font);
@@ -224,11 +225,11 @@ void Win32Canvas::drawText(const std::string& text, int x, int y, unsigned int c
     
     // Convert text (UTF-8) to wide string
     int textLen = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, NULL, 0);
-    std::wstring wText(textLen, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, &wText[0], textLen);
+    std::vector<wchar_t> wText(textLen);
+    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, wText.data(), textLen);
 
     // Draw the text
-    TextOutW(m_hdcMem, x, y, wText.c_str(), (int)wcslen(wText.c_str()));
+    TextOutW(m_hdcMem, x, y, wText.data(), textLen - 1); // -1 to exclude null terminator
     
     // Clean up
     SelectObject(m_hdcMem, oldFont);
@@ -286,11 +287,13 @@ bool Win32Window::create() {
         wc.style = CS_HREDRAW | CS_VREDRAW;
         wc.lpfnWndProc = Win32Window::WindowProc;
         wc.hInstance = GetModuleHandle(NULL);
+        wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
         wc.hCursor = LoadCursor(NULL, IDC_ARROW);
         wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
         wc.lpszClassName = className;
         
         if (!RegisterClassW(&wc)) {
+            std::cerr << "Failed to register window class" << std::endl;
             return false;
         }
         
@@ -308,12 +311,12 @@ bool Win32Window::create() {
     
     // Convert string to wide string for CreateWindow
     int titleLength = MultiByteToWideChar(CP_UTF8, 0, m_config.title.c_str(), -1, NULL, 0);
-    wchar_t* wideTitleBuffer = new wchar_t[titleLength];
-    MultiByteToWideChar(CP_UTF8, 0, m_config.title.c_str(), -1, wideTitleBuffer, titleLength);
+    std::vector<wchar_t> wideTitle(titleLength);
+    MultiByteToWideChar(CP_UTF8, 0, m_config.title.c_str(), -1, wideTitle.data(), titleLength);
     
     m_hwnd = CreateWindowW(
         className,
-        wideTitleBuffer,
+        wideTitle.data(),
         style,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
@@ -325,10 +328,8 @@ bool Win32Window::create() {
         NULL
     );
     
-    // Free the buffer
-    delete[] wideTitleBuffer;
-    
     if (!m_hwnd) {
+        std::cerr << "Failed to create window" << std::endl;
         return false;
     }
     
@@ -338,6 +339,7 @@ bool Win32Window::create() {
     // Initialize canvas
     m_hdc = GetDC(m_hwnd);
     m_canvas->initialize(m_hdc);
+    ReleaseDC(m_hwnd, m_hdc);
     
     // Maximize if requested
     if (m_config.maximized) {
@@ -385,6 +387,53 @@ void* Win32Window::getNativeHandle() const {
     return (void*)m_hwnd;
 }
 
+void Win32Window::setTitle(const std::string& title) {
+    Window::setTitle(title);
+    
+    if (m_hwnd) {
+        // Ensure proper conversion to wide string
+        int len = MultiByteToWideChar(CP_UTF8, 0, title.c_str(), -1, NULL, 0);
+        if (len > 0) {
+            std::vector<wchar_t> wideTitle(len);
+            MultiByteToWideChar(CP_UTF8, 0, title.c_str(), -1, wideTitle.data(), len);
+            SetWindowTextW(m_hwnd, wideTitle.data());
+        }
+    }
+}
+
+void Win32Window::setSize(int width, int height) {
+    Window::setSize(width, height);
+    
+    if (m_hwnd) {
+        RECT rect = { 0, 0, width, height };
+        DWORD style = GetWindowLong(m_hwnd, GWL_STYLE);
+        AdjustWindowRect(&rect, style, FALSE);
+        
+        SetWindowPos(m_hwnd, NULL, 0, 0, 
+                     rect.right - rect.left, 
+                     rect.bottom - rect.top,
+                     SWP_NOMOVE | SWP_NOZORDER);
+    }
+}
+
+void Win32Window::setPosition(int x, int y) {
+    if (m_hwnd) {
+        SetWindowPos(m_hwnd, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+    }
+}
+
+void Win32Window::getPosition(int& x, int& y) const {
+    if (m_hwnd) {
+        RECT rect;
+        GetWindowRect(m_hwnd, &rect);
+        x = rect.left;
+        y = rect.top;
+    } else {
+        x = 0;
+        y = 0;
+    }
+}
+
 void Win32Window::beginPaint() {
     if (m_hwnd) {
         m_hdc = BeginPaint(m_hwnd, &m_ps);
@@ -393,15 +442,10 @@ void Win32Window::beginPaint() {
 }
 
 void Win32Window::endPaint() {
-    if (m_hwnd) {
+    if (m_hwnd && m_hdc) {
         // Copy the memory DC to the window DC
-        HDC hdcMem = NULL;
-        
-        // Get the memory DC through a public accessor method
-        if (m_canvas && dynamic_cast<Win32Canvas*>(m_canvas.get())) {
-            Win32Canvas* winCanvas = dynamic_cast<Win32Canvas*>(m_canvas.get());
-            hdcMem = winCanvas->getGC();
-        }
+        Win32Canvas* winCanvas = static_cast<Win32Canvas*>(m_canvas.get());
+        HDC hdcMem = winCanvas->getGC();
         
         if (hdcMem) {
             BitBlt(m_hdc, 0, 0, m_canvas->width(), m_canvas->height(), 
@@ -433,7 +477,6 @@ LRESULT CALLBACK Win32Window::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
             if (window) {
                 window->notifyCloseEvent();
             }
-            DestroyWindow(hwnd);
             return 0;
             
         case WM_DESTROY:
@@ -451,6 +494,9 @@ LRESULT CALLBACK Win32Window::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
                 HDC hdc = GetDC(hwnd);
                 window->m_canvas->initialize(hdc);
                 ReleaseDC(hwnd, hdc);
+                
+                // Force a repaint
+                InvalidateRect(hwnd, NULL, TRUE);
             }
             return 0;
             
@@ -510,6 +556,10 @@ LRESULT CALLBACK Win32Window::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
                 window->notifyMouseMoveEvent(x, y);
             }
             return 0;
+            
+        case WM_ERASEBKGND:
+            // Prevent flickering by not erasing the background
+            return 1;
     }
     
     return DefWindowProc(hwnd, uMsg, wParam, lParam);

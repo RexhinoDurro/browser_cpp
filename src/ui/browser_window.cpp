@@ -5,6 +5,7 @@
 #include <chrono>
 #include <thread>
 #include <algorithm>
+#include "rendering/paint_system.h"
 
 namespace browser {
 namespace ui {
@@ -42,23 +43,39 @@ BrowserWindow::~BrowserWindow() {
 }
 
 bool BrowserWindow::initialize() {
-    // Initialize browser engine
+    // Initialize browser engine first
+    if (!m_browser) {
+        std::cerr << "Browser instance not set" << std::endl;
+        return false;
+    }
+    
     if (!m_browser->initialize()) {
         std::cerr << "Failed to initialize browser engine" << std::endl;
         return false;
     }
     
-    // Initialize renderer
+    // Initialize renderer with paint system
     if (!m_renderer->initialize()) {
         std::cerr << "Failed to initialize renderer" << std::endl;
         return false;
     }
+    
+    // Create and set paint system
+    auto paintSystem = std::make_shared<rendering::PaintSystem>();
+    if (!paintSystem->initialize()) {
+        std::cerr << "Failed to initialize paint system" << std::endl;
+        return false;
+    }
+    m_renderer->setPaintSystem(paintSystem);
     
     // Create window
     if (!m_window->create()) {
         std::cerr << "Failed to create window" << std::endl;
         return false;
     }
+    
+    // Set initial window title
+    m_window->setTitle("Simple Browser");
     
     // Get window size
     int width, height;
@@ -419,7 +436,7 @@ void BrowserWindow::showDefaultPage() {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Simple Browser</title>
+    <title>Simple Browser - Home</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -472,22 +489,23 @@ void BrowserWindow::showDefaultPage() {
 </head>
 <body>
     <h1>Simple Browser</h1>
+    <p style="text-align: center;">Welcome to Simple Browser</p>
     
     <div class="bookmarks">
         <a href="https://www.google.com" class="bookmark">
-            <div class="bookmark-icon">G</div>
+            <div class="bookmark-icon">🔍</div>
             <div>Google</div>
         </a>
         <a href="https://www.github.com" class="bookmark">
-            <div class="bookmark-icon">GH</div>
+            <div class="bookmark-icon">💻</div>
             <div>GitHub</div>
         </a>
         <a href="https://www.wikipedia.org" class="bookmark">
-            <div class="bookmark-icon">W</div>
+            <div class="bookmark-icon">📚</div>
             <div>Wikipedia</div>
         </a>
         <a href="https://www.youtube.com" class="bookmark">
-            <div class="bookmark-icon">YT</div>
+            <div class="bookmark-icon">📺</div>
             <div>YouTube</div>
         </a>
     </div>
@@ -495,25 +513,43 @@ void BrowserWindow::showDefaultPage() {
 </html>
 )";
 
-    // Load the default page
+    // Load the default page properly
     if (m_browser) {
-        m_browser->htmlParser()->parse(defaultHtml);
+        std::string error;
+        
+        // Parse the HTML directly
+        html::DOMTree domTree = m_browser->htmlParser()->parse(defaultHtml);
+        
+        // Set the DOM tree in the browser (you may need to add this method)
+        // For now, let's use loadUrl with a data URL
+        std::string dataUrl = "data:text/html;charset=utf-8," + defaultHtml;
+        
+        // Actually, let's load it as about:home
+        m_browser->loadUrl("about:home", error);
+        
+        if (!error.empty()) {
+            std::cerr << "Error loading default page: " << error << std::endl;
+        }
         
         // Set a default URL for the about page
-        std::string aboutUrl = "about:home";
-        m_currentUrl = aboutUrl;
-        m_history.push_back(aboutUrl);
+        m_currentUrl = "about:home";
+        m_history.clear();
+        m_history.push_back(m_currentUrl);
         m_historyIndex = 0;
         
         if (m_browserControls) {
-            m_browserControls->setAddressBarText(aboutUrl);
+            m_browserControls->setAddressBarText(m_currentUrl);
         }
+        
+        // Update window title explicitly
+        setTitle("Simple Browser - Home");
         
         // Update UI state
         updateNavigationButtons();
         
-        // Render the page
+        // Force a render
         m_needsRender = true;
+        renderPage();
     }
 }
 
