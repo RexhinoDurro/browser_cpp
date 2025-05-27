@@ -63,11 +63,9 @@ public:
     virtual std::string toString() const = 0;
     
     // Get element by ID (to be overridden by Document)
-    virtual Element* getElementById(const std::string& id) const { return nullptr; }
-    
-    // Query selectors (to be implemented by Document and Element)
-    virtual Element* querySelector(const std::string& selector) const { return nullptr; }
-    virtual std::vector<Element*> querySelectorAll(const std::string& selector) const { return {}; }
+    virtual Element* getElementById(const std::string& /*id*/) const { return nullptr; }
+    virtual Element* querySelector(const std::string& /*selector*/) const { return nullptr; }
+    virtual std::vector<Element*> querySelectorAll(const std::string& /*selector*/) const { return {}; }
     
 protected:
     NodeType m_nodeType;

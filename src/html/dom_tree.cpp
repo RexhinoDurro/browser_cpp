@@ -108,7 +108,6 @@ std::shared_ptr<Node> Node::insertBefore(std::shared_ptr<Node> newChild, std::sh
     }
     
     // Insert before refChild
-    auto insertPos = std::distance(m_childNodes.begin(), it);
     m_childNodes.insert(it, newChild);
     
     // Update sibling pointers
@@ -311,8 +310,10 @@ std::vector<Element*> Element::getElementsByTagName(const std::string& tagName) 
             // Check if tag name matches (case insensitive)
             std::string elementTag = element->tagName();
             std::string targetTag = tagName;
-            std::transform(elementTag.begin(), elementTag.end(), elementTag.begin(), ::tolower);
-            std::transform(targetTag.begin(), targetTag.end(), targetTag.begin(), ::tolower);
+            std::transform(elementTag.begin(), elementTag.end(), elementTag.begin(), 
+                [](unsigned char c) { return static_cast<char>(::tolower(c)); });
+            std::transform(targetTag.begin(), targetTag.end(), targetTag.begin(), 
+                [](unsigned char c) { return static_cast<char>(::tolower(c)); });
             
             if (targetTag == "*" || elementTag == targetTag) {
                 elements.push_back(element);
@@ -628,7 +629,7 @@ void Text::replaceData(size_t offset, size_t count, const std::string& data) {
     m_nodeValue.replace(offset, count, data);
 }
 
-std::shared_ptr<Node> Text::cloneNode(bool deep) const {
+std::shared_ptr<Node> Text::cloneNode(bool /*deep*/) const {
     return std::make_shared<Text>(m_nodeValue);
 }
 
@@ -1066,7 +1067,7 @@ void DOMTree::initialize() {
     m_document = std::make_shared<Document>();
 }
 
-void DOMTree::setContent(const std::string& html) {
+void DOMTree::setContent(const std::string& /*html*/) {
     // Parse and set content
     // This would be done by the HTML parser
     // Left as an exercise for the browser implementation

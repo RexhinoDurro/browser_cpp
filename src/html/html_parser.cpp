@@ -292,7 +292,7 @@ void HTMLParser::handleTagNameState() {
         return;  // Return the token
     } else {
         // Append to tag name
-        m_currentToken.name += std::tolower(c);
+        m_currentToken.name += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         consumeCharacter();
     }
 }
@@ -340,7 +340,7 @@ void HTMLParser::handleAttributeNameState() {
         consumeCharacter();
     } else {
         // Append to attribute name, converting to lowercase
-        m_tempBuffer += std::tolower(c);
+        m_tempBuffer += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         consumeCharacter();
     }
 }
@@ -699,7 +699,7 @@ void HTMLParser::handleDOCTYPENameState() {
         return;  // Return the DOCTYPE token
     } else {
         // Append to DOCTYPE name, converting to lowercase
-        m_tempBuffer += std::tolower(c);
+        m_tempBuffer += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         consumeCharacter();
     }
 }
