@@ -1,117 +1,187 @@
-# CMakeLists.txt for UI/Rendering Tests
-cmake_minimum_required(VERSION 3.10)
-project(BrowserTests VERSION 1.0.0 LANGUAGES CXX)
+// src/build_tests/debug_main.cpp - Debug version of main with extensive logging
+#include "../browser/browser.h"
+#include "../ui/browser_window.h"
+#include <iostream>
+#include <string>
+#include <memory>
+#include <chrono>
+#include <thread>
 
-# Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
-# Set default build type to Debug for tests
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
-endif()
+// Enable debug output
+#define DEBUG_LOG(msg) std::cout << "[DEBUG] " << msg << std::endl
 
-# Compiler flags
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
-    set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
-    set(CMAKE_CXX_FLAGS_DEBUG "/Od /Zi")
-    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
-endif()
+int main(int argc, char* argv[]) {
+    DEBUG_LOG("Starting debug browser...");
+    
+    try {
+        // Step 1: Create browser instance
+        DEBUG_LOG("Step 1: Creating browser instance...");
+        auto browser = std::make_shared<browser::Browser>();
+        if (!browser) {
+            std::cerr << "[ERROR] Failed to create browser instance" << std::endl;
+            return 1;
+        }
+        DEBUG_LOG("Browser instance created successfully");
+        
+        // Step 2: Initialize browser engine
+        DEBUG_LOG("Step 2: Initializing browser engine...");
+        if (!browser->initialize()) {
+            std::cerr << "[ERROR] Failed to initialize browser engine" << std::endl;
+            return 1;
+        }
+        DEBUG_LOG("Browser engine initialized successfully");
+        
+        // Check each component
+        DEBUG_LOG("Checking browser components:");
+        DEBUG_LOG("  - HTML Parser: " << (browser->htmlParser() ? "OK" : "FAILED"));
+        DEBUG_LOG("  - CSS Style Resolver: " << (browser->styleResolver() ? "OK" : "FAILED"));
+        DEBUG_LOG("  - Layout Engine: " << (browser->layoutEngine() ? "OK" : "FAILED"));
+        DEBUG_LOG("  - JS Engine: " << (browser->jsEngine() ? "OK" : "FAILED"));
+        DEBUG_LOG("  - Resource Loader: " << (browser->resourceLoader() ? "OK" : "FAILED"));
+        DEBUG_LOG("  - Security Manager: " << (browser->securityManager() ? "OK" : "FAILED"));
+        
+        // Step 3: Create window configuration
+        DEBUG_LOG("Step 3: Creating window configuration...");
+        browser::ui::WindowConfig config;
+        config.title = "Debug Browser";
+        config.width = 1024;
+        config.height = 768;
+        config.resizable = true;
+        
+        // Step 4: Create browser window
+        DEBUG_LOG("Step 4: Creating browser window...");
+        auto window = std::make_shared<browser::ui::BrowserWindow>(config);
+        if (!window) {
+            std::cerr << "[ERROR] Failed to create browser window" << std::endl;
+            return 1;
+        }
+        DEBUG_LOG("Browser window created successfully");
+        
+        // Step 5: Set browser instance
+        DEBUG_LOG("Step 5: Setting browser instance...");
+        window->setBrowser(browser);
+        
+        // Step 6: Initialize window
+        DEBUG_LOG("Step 6: Initializing browser window...");
+        if (!window->initialize()) {
+            std::cerr << "[ERROR] Failed to initialize browser window" << std::endl;
+            return 1;
+        }
+        DEBUG_LOG("Browser window initialized successfully");
+        
+        // Step 7: Set up callbacks
+        DEBUG_LOG("Step 7: Setting up callbacks...");
+        window->setUrlChangeCallback([](const std::string& url) {
+            DEBUG_LOG("URL changed to: " << url);
+        });
+        
+        window->setTitleChangeCallback([window](const std::string& title) {
+            DEBUG_LOG("Title changed to: " << title);
+            window->setTitle(title + " - Debug Browser");
+        });
+        
+        window->setLoadingStateCallback([](bool isLoading) {
+            DEBUG_LOG("Loading state: " << (isLoading ? "LOADING" : "DONE"));
+        });
+        
+        // Step 8: Show window
+        DEBUG_LOG("Step 8: Showing window...");
+        window->show();
+        
+        // Step 9: Load initial page
+        DEBUG_LOG("Step 9: Loading initial page...");
+        std::string initialUrl = "about:home";
+        if (argc > 1) {
+            initialUrl = argv[1];
+        }
+        
+        DEBUG_LOG("Loading URL: " << initialUrl);
+        window->loadUrl(initialUrl);
+        
+        // Step 10: Run event loop
+        DEBUG_LOG("Step 10: Running event loop...");
+        DEBUG_LOG("Window is open. Press Ctrl+C to quit.");
+        
+        int frameCount = 0;
+        auto lastDebugTime = std::chrono::steady_clock::now();
+        
+        while (window->isOpen()) {
+            window->processEvents();
+            
+            frameCount++;
+            
+            // Print debug info every second
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - lastDebugTime);
+            if (elapsed.count() >= 1) {
+                DEBUG_LOG("Frame " << frameCount << " - FPS: " << frameCount);
+                frameCount = 0;
+                lastDebugTime = now;
+            }
+            
+            // Small delay to avoid consuming too much CPU
+            std::this_thread::sleep_for(std::chrono::milliseconds(16)); // ~60 FPS
+        }
+        
+        DEBUG_LOG("Window closed");
+        
+    } catch (const std::exception& e) {
+        std::cerr << "[FATAL ERROR] Exception: " << e.what() << std::endl;
+        return 1;
+    } catch (...) {
+        std::cerr << "[FATAL ERROR] Unknown exception" << std::endl;
+        return 1;
+    }
+    
+    DEBUG_LOG("Debug browser exiting normally");
+    return 0;
+}
 
-# Platform-specific settings
-if(WIN32)
-    add_definitions(-D_WIN32_WINNT=0x0601)  # Windows 7+
-    set(PLATFORM_LIBS ws2_32 winmm gdi32 user32)
-elseif(APPLE)
-    find_library(COCOA_LIBRARY Cocoa REQUIRED)
-    find_library(IOKIT_LIBRARY IOKit REQUIRED)
-    find_library(CORE_VIDEO CoreVideo REQUIRED)
-    set(PLATFORM_LIBS ${COCOA_LIBRARY} ${IOKIT_LIBRARY} ${CORE_VIDEO})
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ObjC++")
-else()
-    # Linux/Unix
-    find_package(X11 REQUIRED)
-    find_package(Threads REQUIRED)
-    set(PLATFORM_LIBS ${X11_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
-endif()
-
-# Include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
-
-# Collect all source files (same as main project)
-file(GLOB_RECURSE ALL_SOURCES 
-    src/html/*.cpp
-    src/css/*.cpp
-    src/custom_js/*.cpp
-    src/layout/*.cpp
-    src/rendering/*.cpp
-    src/networking/*.cpp
-    src/security/*.cpp
-    src/storage/*.cpp
-    src/ui/*.cpp
-    src/browser/*.cpp
-)
-
-# Platform-specific sources
-if(WIN32)
-    list(APPEND ALL_SOURCES src/ui/window_win32.cpp)
-elseif(APPLE)
-    list(APPEND ALL_SOURCES src/ui/window_macos.mm)
-else()
-    list(APPEND ALL_SOURCES src/ui/window_x11.cpp)
-endif()
-
-# Create the browser library
-add_library(browser_test_lib STATIC ${ALL_SOURCES})
-
-# Platform-specific include directories
-if(NOT WIN32 AND NOT APPLE)
-    target_include_directories(browser_test_lib PUBLIC ${X11_INCLUDE_DIR})
-endif()
-
-# Test executables
-add_executable(test_ui_rendering test_ui_rendering.cpp)
-target_link_libraries(test_ui_rendering browser_test_lib ${PLATFORM_LIBS})
-
-add_executable(simple_browser_test simple_browser_test.cpp)
-target_link_libraries(simple_browser_test browser_test_lib ${PLATFORM_LIBS})
-
-add_executable(minimal_window_test minimal_window_test.cpp)
-target_link_libraries(minimal_window_test browser_test_lib ${PLATFORM_LIBS})
-
-# Copy test files to build directory
-configure_file(test_ui_rendering.cpp ${CMAKE_CURRENT_BINARY_DIR}/test_ui_rendering.cpp COPYONLY)
-configure_file(simple_browser_test.cpp ${CMAKE_CURRENT_BINARY_DIR}/simple_browser_test.cpp COPYONLY)
-configure_file(minimal_window_test.cpp ${CMAKE_CURRENT_BINARY_DIR}/minimal_window_test.cpp COPYONLY)
-
-# Add custom target to run tests
-add_custom_target(run_ui_tests
-    COMMAND test_ui_rendering
-    DEPENDS test_ui_rendering
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running UI/Rendering tests..."
-)
-
-add_custom_target(run_simple_test
-    COMMAND simple_browser_test
-    DEPENDS simple_browser_test
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running simple browser test..."
-)
-
-add_custom_target(run_minimal_test
-    COMMAND minimal_window_test
-    DEPENDS minimal_window_test
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running minimal window test..."
-)
-
-# Print build information
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "Platform: ${CMAKE_SYSTEM_NAME}")
-message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID}")
+// Windows-specific entry point
+#ifdef _WIN32
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    // Allocate console for debug output
+    AllocConsole();
+    FILE* pCout;
+    freopen_s(&pCout, "CONOUT$", "w", stdout);
+    FILE* pCerr;
+    freopen_s(&pCerr, "CONOUT$", "w", stderr);
+    
+    // Get command line arguments
+    int argc;
+    LPWSTR* argvW = CommandLineToArgvW(GetCommandLineW(), &argc);
+    
+    // Convert to char**
+    char** argv = new char*[argc];
+    for (int i = 0; i < argc; i++) {
+        int size = WideCharToMultiByte(CP_UTF8, 0, argvW[i], -1, nullptr, 0, nullptr, nullptr);
+        argv[i] = new char[size];
+        WideCharToMultiByte(CP_UTF8, 0, argvW[i], -1, argv[i], size, nullptr, nullptr);
+    }
+    
+    LocalFree(argvW);
+    
+    // Call main
+    int result = main(argc, argv);
+    
+    // Cleanup
+    for (int i = 0; i < argc; i++) {
+        delete[] argv[i];
+    }
+    delete[] argv;
+    
+    // Keep console open
+    std::cout << "\nPress Enter to close..." << std::endl;
+    std::cin.get();
+    
+    fclose(pCout);
+    fclose(pCerr);
+    FreeConsole();
+    
+    return result;
+}
+#endif
