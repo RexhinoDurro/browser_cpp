@@ -276,16 +276,14 @@ int main(int argc, char* argv[]) {
         });
         
         // Show window
+               
         std::cout << "Starting browser..." << std::endl;
         g_window->show();
         
-        // Load initial URL or default page
+        // Load initial URL if specified (otherwise showDefaultPage was already called in initialize)
         if (!args.initialUrl.empty()) {
             std::cout << "Loading URL: " << args.initialUrl << std::endl;
             g_window->loadUrl(args.initialUrl);
-        } else {
-            // Load default home page
-            g_window->loadUrl("about:home");
         }
         
         // Run event loop

@@ -112,6 +112,10 @@ private:
     
     // Helper methods
     html::Element* findElementAtPosition(int x, int y);
+
+    friend class Win32Window;
+    friend class MacOSWindow;
+    friend class X11Window;
 };
 
 } // namespace ui

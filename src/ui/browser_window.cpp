@@ -240,7 +240,7 @@ void BrowserWindow::renderPage() {
     int contentWidth = width;
     int contentHeight = height - toolbarHeight;
     
-    // Render the page content
+    // Render the page content using the Renderer
     m_renderer->render(layoutRoot.get(), m_renderTarget.get());
     
     // For now, just draw a simple placeholder for the content
