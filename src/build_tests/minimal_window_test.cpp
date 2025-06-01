@@ -1,10 +1,10 @@
-// minimal_window_test.cpp - Absolute minimal test for window creation
+// minimal_window_test.cpp - Fixed version with proper paint handling
 #include <iostream>
 #include <memory>
 #include <thread>
 #include <chrono>
+#include <atomic>
 
-// Only include the window headers
 #include "ui/window.h"
 
 #ifdef _WIN32
@@ -13,9 +13,102 @@
 
 using namespace browser::ui;
 
+// Global flag to track if we need to redraw
+std::atomic<bool> g_needsRedraw(true);
+int g_frameCount = 0;
+
+// Custom window class that handles painting properly
+class TestWindow {
+public:
+    TestWindow(const WindowConfig& config) 
+        : m_window(createPlatformWindow(config))
+        , m_needsRedraw(true) {
+    }
+    
+    bool create() {
+        if (!m_window || !m_window->create()) {
+            return false;
+        }
+        
+        // Set up a resize callback to force redraw
+        m_window->setResizeCallback([this](int w, int h) {
+            m_needsRedraw = true;
+        });
+        
+        return true;
+    }
+    
+    void show() {
+        m_window->show();
+        forceRedraw();
+    }
+    
+    bool processEvents() {
+        bool result = m_window->processEvents();
+        
+        // Check if we need to redraw
+        if (m_needsRedraw || (g_frameCount % 60 == 0)) {
+            forceRedraw();
+            m_needsRedraw = false;
+        }
+        
+        return result;
+    }
+    
+    void forceRedraw() {
+        #ifdef _WIN32
+        // On Windows, force a WM_PAINT message
+        HWND hwnd = (HWND)m_window->getNativeHandle();
+        InvalidateRect(hwnd, NULL, TRUE);
+        UpdateWindow(hwnd);
+        #endif
+        
+        // Draw our content
+        drawContent();
+    }
+    
+    void drawContent() {
+        m_window->beginPaint();
+        Canvas* canvas = m_window->getCanvas();
+        
+        if (canvas) {
+            // Clear to white
+            canvas->clear(Canvas::rgb(255, 255, 255));
+            
+            // Draw a red rectangle
+            canvas->drawRect(50, 50, 200, 100, Canvas::rgb(255, 0, 0), true);
+            
+            // Draw a blue border around it
+            canvas->drawRect(50, 50, 200, 100, Canvas::rgb(0, 0, 255), false, 3);
+            
+            // Draw some text
+            canvas->drawText("Minimal Window Test", 50, 200, Canvas::rgb(0, 0, 0), "Arial", 24);
+            canvas->drawText("If you see this, basic windowing works!", 50, 250, Canvas::rgb(0, 0, 255), "Arial", 16);
+            
+            // Draw frame counter
+            std::string frameText = "Frame: " + std::to_string(g_frameCount);
+            canvas->drawText(frameText, 50, 300, Canvas::rgb(0, 128, 0), "Arial", 14);
+            
+            // Draw additional test shapes
+            canvas->drawEllipse(300, 50, 100, 100, Canvas::rgb(0, 255, 0), true);
+            canvas->drawLine(50, 350, 350, 350, Canvas::rgb(255, 0, 255), 5);
+        }
+        
+        m_window->endPaint();
+    }
+    
+    void close() {
+        m_window->close();
+    }
+    
+private:
+    std::shared_ptr<Window> m_window;
+    bool m_needsRedraw;
+};
+
 int main(int argc, char* argv[]) {
-    std::cout << "Minimal Window Test" << std::endl;
-    std::cout << "==================" << std::endl;
+    std::cout << "Minimal Window Test - Fixed Version" << std::endl;
+    std::cout << "===================================" << std::endl;
     
     // Step 1: Create window config
     std::cout << "\n1. Creating window configuration..." << std::endl;
@@ -25,79 +118,47 @@ int main(int argc, char* argv[]) {
     config.height = 480;
     config.resizable = true;
     
-    // Step 2: Create platform window
-    std::cout << "2. Creating platform window..." << std::endl;
-    auto window = createPlatformWindow(config);
-    if (!window) {
-        std::cerr << "ERROR: createPlatformWindow returned null!" << std::endl;
-        return 1;
-    }
-    std::cout << "   Platform window created" << std::endl;
+    // Step 2: Create test window
+    std::cout << "2. Creating test window..." << std::endl;
+    TestWindow testWindow(config);
     
     // Step 3: Initialize window
-    std::cout << "3. Calling window->create()..." << std::endl;
-    if (!window->create()) {
-        std::cerr << "ERROR: window->create() failed!" << std::endl;
+    std::cout << "3. Initializing window..." << std::endl;
+    if (!testWindow.create()) {
+        std::cerr << "ERROR: Failed to create window!" << std::endl;
         return 1;
     }
     std::cout << "   Window created successfully" << std::endl;
     
     // Step 4: Show window
     std::cout << "4. Showing window..." << std::endl;
-    window->show();
+    testWindow.show();
     std::cout << "   Window should now be visible" << std::endl;
     
-    // Step 5: Simple event loop with drawing
+    // Step 5: Run event loop
     std::cout << "5. Running event loop (close window to exit)..." << std::endl;
-
-int frameCount = 0;
-bool needsRedraw = true;
-
-// Run until window is closed by user
-while (true) {
-    // Process events
-    if (!window->processEvents()) {
-        std::cout << "   Window closed by user" << std::endl;
-        break;
-    }
     
-    // Draw something simple
-    if (needsRedraw || frameCount % 60 == 0) {  // Redraw every second
-        window->beginPaint();
-        Canvas* canvas = window->getCanvas();
+    // Run until window is closed by user
+    while (testWindow.processEvents()) {
+        g_frameCount++;
         
-        if (canvas) {
-            // Clear to white
-            canvas->clear(Canvas::rgb(255, 255, 255));
-            
-            // Draw a red rectangle
-            canvas->drawRect(50, 50, 200, 100, Canvas::rgb(255, 0, 0), true);
-            
-            // Draw some text
-            canvas->drawText("Minimal Window Test", 50, 200, Canvas::rgb(0, 0, 0), "Arial", 24);
-            canvas->drawText("If you see this, basic windowing works!", 50, 250, Canvas::rgb(0, 0, 255), "Arial", 16);
-            
-            // Draw frame counter
-            std::string frameText = "Frame: " + std::to_string(frameCount);
-            canvas->drawText(frameText, 50, 300, Canvas::rgb(0, 128, 0), "Arial", 14);
+        // Print status every second (assuming ~60 FPS)
+        if (g_frameCount % 60 == 0) {
+            std::cout << "   Frame " << g_frameCount << " - Window is running" << std::endl;
         }
         
-        window->endPaint();
-        needsRedraw = false;
+        // Small delay
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
     
-    frameCount++;
+    std::cout << "   Window closed by user" << std::endl;
     
-    // Small delay
-    std::this_thread::sleep_for(std::chrono::milliseconds(16));
-}
-    
-    // Step 6: Close window
-    std::cout << "6. Closing window..." << std::endl;
-    window->close();
+    // Step 6: Cleanup
+    std::cout << "6. Cleaning up..." << std::endl;
+    testWindow.close();
     
     std::cout << "\nTest completed successfully!" << std::endl;
-    std::cout << "Total frames rendered: " << frameCount << std::endl;
+    std::cout << "Total frames rendered: " << g_frameCount << std::endl;
     
     return 0;
 }

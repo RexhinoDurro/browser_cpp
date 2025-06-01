@@ -435,25 +435,21 @@ void Win32Window::getPosition(int& x, int& y) const {
 }
 
 void Win32Window::beginPaint() {
-    if (m_hwnd) {
-        m_hdc = BeginPaint(m_hwnd, &m_ps);
-        m_canvas->initialize(m_hdc);
+    // Don't use BeginPaint here - just get the DC
+    if (m_hwnd && !m_hdc) {
+        m_hdc = GetDC(m_hwnd);
+        // Drawing will happen to the memory DC in the canvas
     }
 }
 
 void Win32Window::endPaint() {
     if (m_hwnd && m_hdc) {
-        // Copy the memory DC to the window DC
-        Win32Canvas* winCanvas = static_cast<Win32Canvas*>(m_canvas.get());
-        HDC hdcMem = winCanvas->getGC();
-        
-        if (hdcMem) {
-            BitBlt(m_hdc, 0, 0, m_canvas->width(), m_canvas->height(), 
-                   hdcMem, 0, 0, SRCCOPY);
-        }
-        
-        EndPaint(m_hwnd, &m_ps);
+        // Release the DC
+        ReleaseDC(m_hwnd, m_hdc);
         m_hdc = NULL;
+        
+        // Force Windows to send a WM_PAINT message
+        InvalidateRect(m_hwnd, NULL, FALSE);
     }
 }
 
@@ -490,7 +486,7 @@ LRESULT CALLBACK Win32Window::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
                 window->notifyResizeEvent(width, height);
                 window->m_canvas->setSize(width, height);
                 
-                // Re-initialize canvas
+                // Re-initialize canvas with new size
                 HDC hdc = GetDC(hwnd);
                 window->m_canvas->initialize(hdc);
                 ReleaseDC(hwnd, hdc);
@@ -500,25 +496,41 @@ LRESULT CALLBACK Win32Window::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
             }
             return 0;
             
-        case WM_PAINT:
+        case WM_PAINT: {
             if (window) {
-                window->beginPaint();
+                PAINTSTRUCT ps;
+                HDC hdc = BeginPaint(hwnd, &ps);
                 
-                // Draw all controls
-                Canvas* canvas = window->getCanvas();
-                if (canvas) {
-                    canvas->clear(Canvas::rgb(240, 240, 240)); // Light gray background
-                    
-                    for (auto& control : window->m_controls) {
-                        if (control->isVisible()) {
-                            control->draw(canvas);
-                        }
-                    }
+                // Get the canvas
+                Win32Canvas* winCanvas = static_cast<Win32Canvas*>(window->m_canvas.get());
+                HDC hdcMem = winCanvas->getGC();
+                
+                if (hdcMem) {
+                    // Copy the memory DC content to the window
+                    BitBlt(hdc, 
+                           ps.rcPaint.left, 
+                           ps.rcPaint.top,
+                           ps.rcPaint.right - ps.rcPaint.left,
+                           ps.rcPaint.bottom - ps.rcPaint.top,
+                           hdcMem,
+                           ps.rcPaint.left,
+                           ps.rcPaint.top,
+                           SRCCOPY);
+                } else {
+                    // No memory DC, fill with background
+                    HBRUSH brush = CreateSolidBrush(RGB(255, 255, 255));
+                    FillRect(hdc, &ps.rcPaint, brush);
+                    DeleteObject(brush);
                 }
                 
-                window->endPaint();
+                EndPaint(hwnd, &ps);
             }
             return 0;
+        }
+            
+        case WM_ERASEBKGND:
+            // Prevent flickering by not erasing the background
+            return 1;
             
         case WM_KEYDOWN:
         case WM_KEYUP:
@@ -556,10 +568,6 @@ LRESULT CALLBACK Win32Window::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
                 window->notifyMouseMoveEvent(x, y);
             }
             return 0;
-            
-        case WM_ERASEBKGND:
-            // Prevent flickering by not erasing the background
-            return 1;
     }
     
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
