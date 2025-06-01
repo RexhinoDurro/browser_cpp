@@ -186,6 +186,12 @@ std::string BrowserWindow::getTitle() const {
 void BrowserWindow::processEvents() {
     if (m_window) {
         m_window->processEvents();
+        
+        // Always render if we need to
+        if (m_needsRender) {
+            renderPage();
+            m_needsRender = false;
+        }
     }
 }
 
@@ -205,13 +211,8 @@ void BrowserWindow::runEventLoop() {
 }
 
 void BrowserWindow::renderPage() {
-    if (!m_browser || !m_window || !m_renderer || !m_renderTarget) {
-        return;
-    }
-    
-    // Get the layout root from the browser
-    auto layoutRoot = m_browser->layoutRoot();
-    if (!layoutRoot) {
+    if (!m_browser || !m_window || !m_renderer) {
+        std::cerr << "renderPage: Missing required components" << std::endl;
         return;
     }
     
@@ -222,36 +223,95 @@ void BrowserWindow::renderPage() {
     // Begin painting
     m_window->beginPaint();
     
-    // Get canvas (if using platform canvas)
+    // Get canvas
     auto canvas = m_window->getCanvas();
     
-    // Clear the window
-    if (canvas) {
-        canvas->clear(Canvas::rgb(255, 255, 255));
+    if (!canvas) {
+        std::cerr << "renderPage: Canvas is null!" << std::endl;
+        m_window->endPaint();
+        return;
     }
     
-    // Draw browser controls
-    if (m_browserControls && m_customContext) {
-        m_browserControls->draw(m_customContext.get());
+    // Clear the window with white background
+    canvas->clear(Canvas::rgb(255, 255, 255));
+    
+    // Draw browser controls first
+    if (m_browserControls) {
+        // Draw toolbar background
+        canvas->drawRect(0, 0, width, 40, Canvas::rgb(240, 240, 240), true);
+        canvas->drawRect(0, 40, width, 1, Canvas::rgb(200, 200, 200), true); // Border
+        
+        // The browser controls should draw themselves, but if they're using 
+        // a custom render context, we need to handle that differently
+        
+        // For now, let's draw mock controls directly
+        // Back button
+        canvas->drawRect(5, 5, 30, 30, Canvas::rgb(220, 220, 220), true);
+        canvas->drawText("←", 12, 22, Canvas::rgb(0, 0, 0), "Arial", 20);
+        
+        // Forward button
+        canvas->drawRect(40, 5, 30, 30, Canvas::rgb(220, 220, 220), true);
+        canvas->drawText("→", 47, 22, Canvas::rgb(0, 0, 0), "Arial", 20);
+        
+        // Reload button
+        canvas->drawRect(75, 5, 30, 30, Canvas::rgb(220, 220, 220), true);
+        canvas->drawText("↻", 82, 22, Canvas::rgb(0, 0, 0), "Arial", 20);
+        
+        // Address bar
+        canvas->drawRect(110, 5, width - 120, 30, Canvas::rgb(255, 255, 255), true);
+        canvas->drawRect(110, 5, width - 120, 30, Canvas::rgb(180, 180, 180), false);
+        
+        // Address text
+        if (!m_currentUrl.empty()) {
+            canvas->drawText(m_currentUrl, 115, 22, Canvas::rgb(0, 0, 0), "Arial", 14);
+        } else {
+            canvas->drawText("Enter URL...", 115, 22, Canvas::rgb(180, 180, 180), "Arial", 14);
+        }
     }
     
     // Calculate content area (below toolbar)
-    int toolbarHeight = 40; // Height of the toolbar
-    int contentWidth = width;
-    int contentHeight = height - toolbarHeight;
+    int toolbarHeight = 40;
+    int contentY = toolbarHeight + 1; // +1 for border
+    int contentHeight = height - contentY;
     
-    // Render the page content using the Renderer
-    m_renderer->render(layoutRoot.get(), m_renderTarget.get());
+    // Get the layout root from the browser
+    auto layoutRoot = m_browser->layoutRoot();
     
-    // For now, just draw a simple placeholder for the content
-    if (canvas) {
-        // Draw content area background
-        canvas->drawRect(0, toolbarHeight, contentWidth, contentHeight, 
-                         Canvas::rgb(255, 255, 255), true);
+    if (layoutRoot) {
+        // Check if we have a render target
+        if (!m_renderTarget) {
+            // Create a new render target
+            m_renderTarget = std::make_shared<rendering::CustomRenderTarget>(width, contentHeight);
+        }
         
-        // Draw some placeholder text
-        canvas->drawText("Page content here", 10, toolbarHeight + 20, 
-                        Canvas::rgb(0, 0, 0), "Arial", 14);
+        // Make sure render target is the right size
+        if (m_renderTarget->width() != width || m_renderTarget->height() != contentHeight) {
+            m_renderTarget = std::make_shared<rendering::CustomRenderTarget>(width, contentHeight);
+        }
+        
+        // Render the page content using the Renderer
+        m_renderer->render(layoutRoot.get(), m_renderTarget.get());
+        
+        // For now, let's also try ASCII rendering for debugging
+        std::string ascii = m_renderer->renderToASCII(layoutRoot.get(), 80, 24);
+        std::cout << "ASCII render of page:\n" << ascii << std::endl;
+        
+        // Draw a placeholder to show where content should be
+        canvas->drawRect(0, contentY, width, contentHeight, Canvas::rgb(255, 255, 255), true);
+        canvas->drawText("Page content area", 10, contentY + 20, Canvas::rgb(100, 100, 100), "Arial", 12);
+        
+        // Draw some debug info
+        canvas->drawText("Layout root exists", 10, contentY + 40, Canvas::rgb(0, 128, 0), "Arial", 12);
+        
+        // Get document info
+        if (m_browser->currentDocument()) {
+            std::string docInfo = "Document: " + m_browser->currentDocument()->title();
+            canvas->drawText(docInfo, 10, contentY + 60, Canvas::rgb(0, 0, 128), "Arial", 12);
+        }
+    } else {
+        // No layout root - draw placeholder
+        canvas->drawRect(0, contentY, width, contentHeight, Canvas::rgb(250, 250, 250), true);
+        canvas->drawText("No page loaded", width/2 - 50, height/2, Canvas::rgb(150, 150, 150), "Arial", 16);
     }
     
     // End painting

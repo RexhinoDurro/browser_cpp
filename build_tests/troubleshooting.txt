@@ -1,0 +1,217 @@
+# Browser UI/Rendering Troubleshooting Guide
+
+## Quick Diagnosis Steps
+
+1. **Run the minimal window test first:**
+   ```bash
+   ./minimal_window_test
+   ```
+   - If this fails: Issue is with platform window code
+   - If this works: Continue to step 2
+
+2. **Run the UI rendering test suite:**
+   ```bash
+   ./test_ui_rendering
+   ```
+   - Note which tests fail
+   - This will help isolate the problematic component
+
+3. **Run the simple browser test:**
+   ```bash
+   ./simple_browser_test
+   ```
+   - Check the debug output for where it fails
+
+## Common Issues and Solutions
+
+### Issue: Window doesn't appear at all
+
+**Symptoms:**
+- Program runs but no window is visible
+- No crash or error messages
+
+**Possible Causes & Solutions:**
+
+1. **Platform window creation failed silently**
+   - Check if `createPlatformWindow()` returns a valid pointer
+   - Verify `window->create()` returns true
+   - Add debug logging to platform-specific window code
+
+2. **Event loop not running**
+   - Make sure `processEvents()` is being called in a loop
+   - Check if the window is immediately closing
+
+3. **Window positioned off-screen**
+   - Try setting explicit position: `window->setPosition(100, 100)`
+   - Check multi-monitor setup
+
+### Issue: Window appears but is blank/white
+
+**Symptoms:**
+- Window is visible but nothing is drawn
+- Background is white or transparent
+
+**Possible Causes & Solutions:**
+
+1. **Paint methods not called**
+   - Ensure `beginPaint()` and `endPaint()` are called
+   - Check if `m_needsRender` is being set to true
+   - Verify `renderPage()` is being called
+
+2. **Canvas is null**
+   - Check if `window->getCanvas()` returns a valid pointer
+   - Verify canvas initialization in platform code
+
+3. **Rendering pipeline disconnected**
+   - Check if renderer is initialized
+   - Verify paint system is created
+   - Ensure render target is created with correct size
+
+### Issue: Browser controls not visible
+
+**Symptoms:**
+- Window appears but no toolbar/buttons
+- Only content area is visible
+
+**Possible Causes & Solutions:**
+
+1. **BrowserControls not initialized**
+   - Check if `m_browserControls->initialize()` is called
+   - Verify it returns true
+
+2. **Controls drawn but immediately overwritten**
+   - Check drawing order (controls should be drawn after clearing)
+   - Verify toolbar height is correct
+
+3. **Custom render context issues**
+   - The controls use CustomRenderContext which might not integrate with Canvas
+   - Try drawing mock controls directly with Canvas
+
+### Issue: Page content not rendered
+
+**Symptoms:**
+- Browser controls visible but page area is empty
+- "No page loaded" message appears
+
+**Possible Causes & Solutions:**
+
+1. **HTML parsing failed**
+   - Check if `browser->loadUrl()` returns true
+   - Look for parse errors in console output
+   - Try loading a simpler HTML page
+
+2. **Layout calculation failed**
+   - Verify layout engine is initialized
+   - Check if `layoutRoot()` returns a valid box
+   - Print layout tree for debugging
+
+3. **Renderer not painting**
+   - Verify paint system creates display items
+   - Check if render target is properly sized
+   - Try ASCII rendering to see if layout is correct
+
+## Code Fixes to Try
+
+### Fix 1: Force immediate rendering
+Add this to `BrowserWindow::initialize()`:
+```cpp
+// After all initialization
+m_needsRender = true;
+renderPage();
+```
+
+### Fix 2: Add paint callback to event loop
+In `BrowserWindow::runEventLoop()`:
+```cpp
+while (isOpen()) {
+    processEvents();
+    
+    // Force render every frame for testing
+    renderPage();
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+}
+```
+
+### Fix 3: Debug canvas drawing
+Add logging to canvas methods:
+```cpp
+void Win32Canvas::clear(unsigned int color) {
+    std::cout << "Canvas::clear called with color: " << std::hex << color << std::dec << std::endl;
+    // ... rest of method
+}
+```
+
+### Fix 4: Simplify browser controls
+Replace custom render context with direct canvas drawing:
+```cpp
+void BrowserControls::draw(Canvas* canvas) {
+    // Draw toolbar background
+    canvas->drawRect(0, 0, m_width, 40, Canvas::rgb(240, 240, 240), true);
+    
+    // Draw buttons directly
+    // ... etc
+}
+```
+
+## Platform-Specific Issues
+
+### Windows
+- Make sure GDI resources are not leaking
+- Check if double buffering is working correctly
+- Verify HWND is valid throughout the lifetime
+
+### macOS
+- Ensure NSView is properly retained
+- Check if drawRect: is being called
+- Verify coordinate system (flipped vs non-flipped)
+
+### Linux/X11
+- Check DISPLAY environment variable
+- Verify X11 connection is established
+- Make sure XFlush is called after drawing
+
+## Debug Output to Add
+
+Add these debug statements to trace execution:
+
+```cpp
+// In BrowserWindow::renderPage()
+std::cout << "renderPage called" << std::endl;
+std::cout << "  - Browser: " << (m_browser ? "OK" : "NULL") << std::endl;
+std::cout << "  - Window: " << (m_window ? "OK" : "NULL") << std::endl;
+std::cout << "  - Renderer: " << (m_renderer ? "OK" : "NULL") << std::endl;
+std::cout << "  - Canvas: " << (canvas ? "OK" : "NULL") << std::endl;
+std::cout << "  - Layout root: " << (layoutRoot ? "OK" : "NULL") << std::endl;
+
+// In platform window paint handler
+std::cout << "Platform paint handler called" << std::endl;
+
+// In canvas draw methods
+std::cout << "Canvas::drawRect at " << x << "," << y << std::endl;
+```
+
+## If All Else Fails
+
+1. **Start with the minimal test**
+   - Get `minimal_window_test` working first
+   - This proves the platform windowing code works
+
+2. **Build incrementally**
+   - Add one component at a time
+   - Test after each addition
+   - Use the test suite to verify each component
+
+3. **Use a debugger**
+   - Set breakpoints in paint methods
+   - Verify control flow
+   - Check object states
+
+4. **Compare with working examples**
+   - Look at simple Win32/Cocoa/X11 examples
+   - Ensure basic window creation matches standard patterns
+
+5. **Simplify the rendering**
+   - Remove custom renderer temporarily
+   - Use only basic canvas operations
+   - Get something visible first, then add complexity
