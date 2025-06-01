@@ -1,4 +1,10 @@
 // src/ui/browser_window.cpp
+
+// Fix for Windows min/max macros
+#ifdef _WIN32
+#define NOMINMAX
+#endif
+
 #include "browser_window.h"
 #include <iostream>
 #include <sstream>
@@ -241,10 +247,7 @@ void BrowserWindow::renderPage() {
         canvas->drawRect(0, 0, width, 40, Canvas::rgb(240, 240, 240), true);
         canvas->drawRect(0, 40, width, 1, Canvas::rgb(200, 200, 200), true); // Border
         
-        // The browser controls should draw themselves, but if they're using 
-        // a custom render context, we need to handle that differently
-        
-        // For now, let's draw mock controls directly
+        // Draw navigation buttons
         // Back button
         canvas->drawRect(5, 5, 30, 30, Canvas::rgb(220, 220, 220), true);
         canvas->drawText("←", 12, 22, Canvas::rgb(0, 0, 0), "Arial", 20);
@@ -278,36 +281,101 @@ void BrowserWindow::renderPage() {
     auto layoutRoot = m_browser->layoutRoot();
     
     if (layoutRoot) {
-        // Check if we have a render target
-        if (!m_renderTarget) {
-            // Create a new render target
-            m_renderTarget = std::make_shared<rendering::CustomRenderTarget>(width, contentHeight);
+        // Create a paint system if we don't have one
+        auto paintSystem = m_renderer->getPaintSystem();
+        if (!paintSystem) {
+            paintSystem = std::make_shared<rendering::PaintSystem>();
+            paintSystem->initialize();
+            m_renderer->setPaintSystem(paintSystem);
         }
         
-        // Make sure render target is the right size
-        if (m_renderTarget->width() != width || m_renderTarget->height() != contentHeight) {
-            m_renderTarget = std::make_shared<rendering::CustomRenderTarget>(width, contentHeight);
+        // Create a paint context
+        rendering::PaintContext context = paintSystem->createContext(layoutRoot.get());
+        
+        // Paint the layout tree to the context
+        paintSystem->paintBox(layoutRoot.get(), context);
+        
+        // Now render the display list directly to our canvas
+        const rendering::DisplayList& displayList = context.displayList();
+        
+        // Clear content area
+        canvas->drawRect(0, contentY, width, contentHeight, Canvas::rgb(255, 255, 255), true);
+        
+        // Render each display item
+        for (const auto& item : displayList.items()) {
+            if (!item) continue;
+            
+            switch (item->type()) {
+                case rendering::DisplayItemType::BACKGROUND: {
+                    auto bgItem = static_cast<rendering::BackgroundDisplayItem*>(item.get());
+                    canvas->drawRect(
+                        static_cast<int>(bgItem->rect().x), 
+                        static_cast<int>(bgItem->rect().y) + contentY,
+                        static_cast<int>(bgItem->rect().width), 
+                        static_cast<int>(bgItem->rect().height),
+                        Canvas::rgb(bgItem->color().r, bgItem->color().g, bgItem->color().b),
+                        true
+                    );
+                    break;
+                }
+                
+                case rendering::DisplayItemType::BORDER: {
+                    auto borderItem = static_cast<rendering::BorderDisplayItem*>(item.get());
+                    
+                    // Calculate max border width
+                    float maxWidth = borderItem->topWidth();
+                    if (borderItem->rightWidth() > maxWidth) maxWidth = borderItem->rightWidth();
+                    if (borderItem->bottomWidth() > maxWidth) maxWidth = borderItem->bottomWidth();
+                    if (borderItem->leftWidth() > maxWidth) maxWidth = borderItem->leftWidth();
+                    
+                    canvas->drawRect(
+                        static_cast<int>(borderItem->rect().x), 
+                        static_cast<int>(borderItem->rect().y) + contentY,
+                        static_cast<int>(borderItem->rect().width), 
+                        static_cast<int>(borderItem->rect().height),
+                        Canvas::rgb(borderItem->color().r, borderItem->color().g, borderItem->color().b),
+                        false,
+                        static_cast<int>(maxWidth)
+                    );
+                    break;
+                }
+                
+                case rendering::DisplayItemType::TEXT: {
+                    auto textItem = static_cast<rendering::TextDisplayItem*>(item.get());
+                    canvas->drawText(
+                        textItem->text(),
+                        static_cast<int>(textItem->x()),
+                        static_cast<int>(textItem->y()) + contentY,
+                        Canvas::rgb(textItem->color().r, textItem->color().g, textItem->color().b),
+                        textItem->fontFamily(),
+                        static_cast<int>(textItem->fontSize())
+                    );
+                    break;
+                }
+                
+                case rendering::DisplayItemType::RECT: {
+                    auto rectItem = static_cast<rendering::RectDisplayItem*>(item.get());
+                    canvas->drawRect(
+                        static_cast<int>(rectItem->rect().x),
+                        static_cast<int>(rectItem->rect().y) + contentY,
+                        static_cast<int>(rectItem->rect().width),
+                        static_cast<int>(rectItem->rect().height),
+                        Canvas::rgb(rectItem->color().r, rectItem->color().g, rectItem->color().b),
+                        rectItem->filled()
+                    );
+                    break;
+                }
+                
+                default:
+                    // Other display item types not implemented yet
+                    break;
+            }
         }
         
-        // Render the page content using the Renderer
-        m_renderer->render(layoutRoot.get(), m_renderTarget.get());
-        
-        // For now, let's also try ASCII rendering for debugging
+        // Debug: Also show ASCII rendering
         std::string ascii = m_renderer->renderToASCII(layoutRoot.get(), 80, 24);
         std::cout << "ASCII render of page:\n" << ascii << std::endl;
         
-        // Draw a placeholder to show where content should be
-        canvas->drawRect(0, contentY, width, contentHeight, Canvas::rgb(255, 255, 255), true);
-        canvas->drawText("Page content area", 10, contentY + 20, Canvas::rgb(100, 100, 100), "Arial", 12);
-        
-        // Draw some debug info
-        canvas->drawText("Layout root exists", 10, contentY + 40, Canvas::rgb(0, 128, 0), "Arial", 12);
-        
-        // Get document info
-        if (m_browser->currentDocument()) {
-            std::string docInfo = "Document: " + m_browser->currentDocument()->title();
-            canvas->drawText(docInfo, 10, contentY + 60, Canvas::rgb(0, 0, 128), "Arial", 12);
-        }
     } else {
         // No layout root - draw placeholder
         canvas->drawRect(0, contentY, width, contentHeight, Canvas::rgb(250, 250, 250), true);
@@ -843,7 +911,8 @@ void BrowserWindow::handleResizeEvent(int width, int height) {
         css::StyleResolver* styleResolver = m_browser->styleResolver();
         if (styleResolver) {
             m_browser->layoutEngine()->layoutDocument(
-                m_browser->currentDocument(), styleResolver, width, height - 40);
+                m_browser->currentDocument(), styleResolver, 
+                static_cast<float>(width), static_cast<float>(height - 40));
         }
     }
     

@@ -40,30 +40,45 @@ else()
     set(PLATFORM_LIBS ${X11_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 endif()
 
-# Include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+# Include directories - point to parent src directory
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-# Collect all source files (same as main project)
+# Collect all source files - adjust paths to parent directory
 file(GLOB_RECURSE ALL_SOURCES 
-    src/html/*.cpp
-    src/css/*.cpp
-    src/custom_js/*.cpp
-    src/layout/*.cpp
-    src/rendering/*.cpp
-    src/networking/*.cpp
-    src/security/*.cpp
-    src/storage/*.cpp
-    src/ui/*.cpp
-    src/browser/*.cpp
+    ../html/*.cpp
+    ../css/*.cpp
+    ../custom_js/*.cpp
+    ../layout/*.cpp
+    ../rendering/*.cpp
+    ../networking/*.cpp
+    ../security/*.cpp
+    ../storage/*.cpp
+    ../ui/*.cpp
+    ../browser/*.cpp
 )
 
 # Platform-specific sources
 if(WIN32)
-    list(APPEND ALL_SOURCES src/ui/window_win32.cpp)
+    list(APPEND ALL_SOURCES ../ui/window_win32.cpp)
 elseif(APPLE)
-    list(APPEND ALL_SOURCES src/ui/window_macos.mm)
+    list(APPEND ALL_SOURCES ../ui/window_macos.mm)
 else()
-    list(APPEND ALL_SOURCES src/ui/window_x11.cpp)
+    list(APPEND ALL_SOURCES ../ui/window_x11.cpp)
+endif()
+
+# Remove platform-specific files that aren't for this platform
+if(WIN32)
+    list(REMOVE_ITEM ALL_SOURCES 
+        ${CMAKE_CURRENT_SOURCE_DIR}/../ui/window_macos.mm
+        ${CMAKE_CURRENT_SOURCE_DIR}/../ui/window_x11.cpp)
+elseif(APPLE)
+    list(REMOVE_ITEM ALL_SOURCES 
+        ${CMAKE_CURRENT_SOURCE_DIR}/../ui/window_win32.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../ui/window_x11.cpp)
+else()
+    list(REMOVE_ITEM ALL_SOURCES 
+        ${CMAKE_CURRENT_SOURCE_DIR}/../ui/window_win32.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../ui/window_macos.mm)
 endif()
 
 # Create the browser library
@@ -84,7 +99,7 @@ target_link_libraries(simple_browser_test browser_test_lib ${PLATFORM_LIBS})
 add_executable(minimal_window_test minimal_window_test.cpp)
 target_link_libraries(minimal_window_test browser_test_lib ${PLATFORM_LIBS})
 
-# Copy test files to build directory
+# Copy test files to build directory (they're in the current source directory)
 configure_file(test_ui_rendering.cpp ${CMAKE_CURRENT_BINARY_DIR}/test_ui_rendering.cpp COPYONLY)
 configure_file(simple_browser_test.cpp ${CMAKE_CURRENT_BINARY_DIR}/simple_browser_test.cpp COPYONLY)
 configure_file(minimal_window_test.cpp ${CMAKE_CURRENT_BINARY_DIR}/minimal_window_test.cpp COPYONLY)

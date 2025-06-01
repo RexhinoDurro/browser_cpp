@@ -48,57 +48,49 @@ int main(int argc, char* argv[]) {
     std::cout << "   Window should now be visible" << std::endl;
     
     // Step 5: Simple event loop with drawing
-    std::cout << "5. Running event loop for 5 seconds..." << std::endl;
-    
-    auto start = std::chrono::steady_clock::now();
-    int frameCount = 0;
-    bool needsRedraw = true;
-    
-    while (std::chrono::steady_clock::now() - start < std::chrono::seconds(5)) {
-        // Process events
-        if (!window->processEvents()) {
-            std::cout << "   Window closed by user" << std::endl;
-            break;
-        }
-        
-        // Draw something simple
-        if (needsRedraw) {
-            window->beginPaint();
-            Canvas* canvas = window->getCanvas();
-            
-            if (canvas) {
-                // Clear to white
-                canvas->clear(Canvas::rgb(255, 255, 255));
-                
-                // Draw a red rectangle
-                canvas->drawRect(50, 50, 200, 100, Canvas::rgb(255, 0, 0), true);
-                
-                // Draw some text
-                canvas->drawText("Minimal Window Test", 50, 200, Canvas::rgb(0, 0, 0), "Arial", 24);
-                canvas->drawText("If you see this, basic windowing works!", 50, 250, Canvas::rgb(0, 0, 255), "Arial", 16);
-                
-                // Draw frame counter
-                std::string frameText = "Frame: " + std::to_string(frameCount);
-                canvas->drawText(frameText, 50, 300, Canvas::rgb(0, 128, 0), "Arial", 14);
-            } else {
-                std::cout << "   WARNING: Canvas is null!" << std::endl;
-            }
-            
-            window->endPaint();
-            needsRedraw = false;
-        }
-        
-        frameCount++;
-        
-        // Print status every 60 frames (roughly 1 second)
-        if (frameCount % 60 == 0) {
-            std::cout << "   Frame " << frameCount << " - Window is still open" << std::endl;
-            needsRedraw = true; // Redraw to update frame counter
-        }
-        
-        // Small delay
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    std::cout << "5. Running event loop (close window to exit)..." << std::endl;
+
+int frameCount = 0;
+bool needsRedraw = true;
+
+// Run until window is closed by user
+while (true) {
+    // Process events
+    if (!window->processEvents()) {
+        std::cout << "   Window closed by user" << std::endl;
+        break;
     }
+    
+    // Draw something simple
+    if (needsRedraw || frameCount % 60 == 0) {  // Redraw every second
+        window->beginPaint();
+        Canvas* canvas = window->getCanvas();
+        
+        if (canvas) {
+            // Clear to white
+            canvas->clear(Canvas::rgb(255, 255, 255));
+            
+            // Draw a red rectangle
+            canvas->drawRect(50, 50, 200, 100, Canvas::rgb(255, 0, 0), true);
+            
+            // Draw some text
+            canvas->drawText("Minimal Window Test", 50, 200, Canvas::rgb(0, 0, 0), "Arial", 24);
+            canvas->drawText("If you see this, basic windowing works!", 50, 250, Canvas::rgb(0, 0, 255), "Arial", 16);
+            
+            // Draw frame counter
+            std::string frameText = "Frame: " + std::to_string(frameCount);
+            canvas->drawText(frameText, 50, 300, Canvas::rgb(0, 128, 0), "Arial", 14);
+        }
+        
+        window->endPaint();
+        needsRedraw = false;
+    }
+    
+    frameCount++;
+    
+    // Small delay
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+}
     
     // Step 6: Close window
     std::cout << "6. Closing window..." << std::endl;

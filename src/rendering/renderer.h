@@ -65,7 +65,7 @@ public:
     
     // For console-based renderers, output ASCII art
     std::string renderToASCII(layout::Box* rootBox, int width, int height);
-    
+    std::shared_ptr<PaintSystem> getPaintSystem() const { return m_paintSystem; }
 private:
     // Helper functions
     Color getBoxBackgroundColor(layout::Box* box);

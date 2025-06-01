@@ -123,30 +123,26 @@ int main(int argc, char* argv[]) {
         std::cout << "   Window will close automatically in 5 seconds" << std::endl;
         
         auto start = std::chrono::steady_clock::now();
+        std::cout << "\n8. Running event loop (close window to exit)..." << std::endl;
+
         int frameCount = 0;
-        
-        while (browserWindow->isOpen() && 
-               std::chrono::steady_clock::now() - start < std::chrono::seconds(5)) {
-            
+
+        // Run until window is closed by user
+        while (browserWindow->isOpen()) {
             // Process events
             browserWindow->processEvents();
             
             // Print frame count every second
             frameCount++;
             if (frameCount % 60 == 0) {
-                std::cout << "   Frame " << frameCount << " - Window is " 
-                         << (browserWindow->isOpen() ? "open" : "closed") << std::endl;
+                std::cout << "   Frame " << frameCount << " - Window is open" << std::endl;
             }
             
             // Sleep to avoid consuming too much CPU
             std::this_thread::sleep_for(std::chrono::milliseconds(16)); // ~60 FPS
         }
-        
-        // Step 9: Close window
-        std::cout << "\n9. Closing browser window..." << std::endl;
-        browserWindow->close();
-        
-        std::cout << "\nTest completed successfully!" << std::endl;
+
+        std::cout << "   Window closed by user" << std::endl;
         
     } catch (const std::exception& e) {
         std::cerr << "\nEXCEPTION: " << e.what() << std::endl;

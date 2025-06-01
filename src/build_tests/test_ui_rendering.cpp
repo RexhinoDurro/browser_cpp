@@ -27,7 +27,7 @@ bool testBasicWindow() {
     std::cout << "\n=== Test 1: Basic Window Creation ===" << std::endl;
     
     WindowConfig config;
-    config.title = "Test Window";
+    config.title = "Test Window - Close to continue";
     config.width = 800;
     config.height = 600;
     
@@ -44,17 +44,16 @@ bool testBasicWindow() {
     
     std::cout << "Window created successfully" << std::endl;
     
-    // Show window briefly
+    // Show window
     window->show();
     
-    // Process events for a short time
-    auto start = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start < std::chrono::seconds(1)) {
-        window->processEvents();
+    std::cout << "Close the window to continue to the next test..." << std::endl;
+    
+    // Process events until window is closed
+    while (window->processEvents()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
     
-    window->close();
     std::cout << "Test 1 PASSED" << std::endl;
     return true;
 }
@@ -64,7 +63,7 @@ bool testCanvasDrawing() {
     std::cout << "\n=== Test 2: Canvas Drawing ===" << std::endl;
     
     WindowConfig config;
-    config.title = "Canvas Drawing Test";
+    config.title = "Canvas Drawing Test - Close to continue";
     config.width = 800;
     config.height = 600;
     
@@ -75,6 +74,9 @@ bool testCanvasDrawing() {
     }
     
     window->show();
+    
+    std::cout << "Drawing shapes on canvas..." << std::endl;
+    std::cout << "Close the window to continue to the next test..." << std::endl;
     
     // Draw on canvas
     auto drawTest = [&window]() {
@@ -106,14 +108,11 @@ bool testCanvasDrawing() {
         return false;
     }
     
-    // Process events
-    auto start = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start < std::chrono::seconds(2)) {
-        window->processEvents();
+    // Process events until window is closed
+    while (window->processEvents()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
     
-    window->close();
     std::cout << "Test 2 PASSED" << std::endl;
     return true;
 }
@@ -163,7 +162,7 @@ bool testCustomCanvas() {
     std::cout << "\n=== Test 4: Custom Canvas with Window ===" << std::endl;
     
     WindowConfig config;
-    config.title = "Custom Canvas Test";
+    config.title = "Custom Canvas Test - Close to continue";
     config.width = 800;
     config.height = 600;
     
@@ -182,6 +181,9 @@ bool testCustomCanvas() {
     }
     
     window->show();
+    
+    std::cout << "Drawing with custom canvas..." << std::endl;
+    std::cout << "Close the window to continue to the next test..." << std::endl;
     
     // Draw using custom canvas
     auto drawCustom = [&window, &customCanvas]() {
@@ -204,14 +206,11 @@ bool testCustomCanvas() {
     
     drawCustom();
     
-    // Process events
-    auto start = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start < std::chrono::seconds(2)) {
-        window->processEvents();
+    // Process events until window is closed
+    while (window->processEvents()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
     
-    window->close();
     std::cout << "Test 4 PASSED" << std::endl;
     return true;
 }
@@ -221,7 +220,7 @@ bool testBrowserControls() {
     std::cout << "\n=== Test 5: Browser Controls ===" << std::endl;
     
     WindowConfig config;
-    config.title = "Browser Controls Test";
+    config.title = "Browser Controls Test - Close to continue";
     config.width = 1024;
     config.height = 768;
     
@@ -238,6 +237,9 @@ bool testBrowserControls() {
     auto ctx = std::make_shared<CustomRenderContext>();
     
     window->show();
+    
+    std::cout << "Displaying browser controls mockup..." << std::endl;
+    std::cout << "Close the window to continue to the next test..." << std::endl;
     
     // Draw controls
     auto drawControls = [&window, &controls, &ctx]() {
@@ -271,14 +273,11 @@ bool testBrowserControls() {
     
     drawControls();
     
-    // Process events
-    auto start = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start < std::chrono::seconds(2)) {
-        window->processEvents();
+    // Process events until window is closed
+    while (window->processEvents()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
     
-    window->close();
     std::cout << "Test 5 PASSED" << std::endl;
     return true;
 }
@@ -337,7 +336,7 @@ bool testFullRenderingPipeline() {
     std::cout << "\n=== Test 7: Full Rendering Pipeline ===" << std::endl;
     
     WindowConfig config;
-    config.title = "Full Rendering Pipeline Test";
+    config.title = "Full Rendering Pipeline Test - Close to continue";
     config.width = 800;
     config.height = 600;
     
@@ -379,18 +378,42 @@ bool testFullRenderingPipeline() {
     
     window->show();
     
+    std::cout << "Rendering a blue box using the full pipeline..." << std::endl;
+    std::cout << "Close the window to continue..." << std::endl;
+    
     // Render
     auto render = [&]() {
         window->beginPaint();
+        Canvas* canvas = window->getCanvas();
         
-        // Create render target
-        auto renderTarget = std::make_shared<CustomRenderTarget>(800, 600);
-        
-        // Render the layout
-        if (layoutEngine.layoutRoot()) {
-            renderer->render(layoutEngine.layoutRoot().get(), renderTarget.get());
+        if (canvas && layoutEngine.layoutRoot()) {
+            // Clear background
+            canvas->clear(Canvas::rgb(255, 255, 255));
             
-            // Get ASCII representation for debugging
+            // Create paint context
+            PaintContext context = paintSystem->createContext(layoutEngine.layoutRoot().get());
+            paintSystem->paintBox(layoutEngine.layoutRoot().get(), context);
+            
+            // Render display list to canvas
+            const DisplayList& displayList = context.displayList();
+            
+            for (const auto& item : displayList.items()) {
+                if (!item) continue;
+                
+                if (item->type() == DisplayItemType::BACKGROUND) {
+                    auto bgItem = static_cast<BackgroundDisplayItem*>(item.get());
+                    canvas->drawRect(
+                        static_cast<int>(bgItem->rect().x),
+                        static_cast<int>(bgItem->rect().y),
+                        static_cast<int>(bgItem->rect().width),
+                        static_cast<int>(bgItem->rect().height),
+                        Canvas::rgb(bgItem->color().r, bgItem->color().g, bgItem->color().b),
+                        true
+                    );
+                }
+            }
+            
+            // Also show ASCII representation
             std::string ascii = renderer->renderToASCII(layoutEngine.layoutRoot().get(), 80, 24);
             std::cout << "ASCII Render:\n" << ascii << std::endl;
         }
@@ -400,14 +423,11 @@ bool testFullRenderingPipeline() {
     
     render();
     
-    // Process events
-    auto start = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start < std::chrono::seconds(2)) {
-        window->processEvents();
+    // Process events until window is closed
+    while (window->processEvents()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
     
-    window->close();
     std::cout << "Test 7 PASSED" << std::endl;
     return true;
 }
@@ -436,7 +456,24 @@ int main(int argc, char* argv[]) {
         {"Full Rendering Pipeline", testFullRenderingPipeline}
     };
     
-    for (const auto& test : tests) {
+    // Check if running specific test
+    int testToRun = -1;
+    if (argc > 1) {
+        testToRun = std::atoi(argv[1]) - 1;
+        if (testToRun >= 0 && testToRun < sizeof(tests)/sizeof(tests[0])) {
+            std::cout << "\nRunning only test " << (testToRun + 1) << ": " << tests[testToRun].name << std::endl;
+        } else {
+            std::cout << "\nInvalid test number. Running all tests." << std::endl;
+            testToRun = -1;
+        }
+    }
+    
+    for (int i = 0; i < sizeof(tests)/sizeof(tests[0]); i++) {
+        if (testToRun >= 0 && i != testToRun) {
+            continue; // Skip tests we're not running
+        }
+        
+        const auto& test = tests[i];
         try {
             std::cout << "\nRunning: " << test.name << std::endl;
             if (test.func()) {
@@ -466,6 +503,9 @@ int main(int argc, char* argv[]) {
     } else {
         std::cout << "\nSome tests FAILED!" << std::endl;
     }
+    
+    std::cout << "\nPress Enter to exit..." << std::endl;
+    std::cin.get();
     
     return failed == 0 ? 0 : 1;
 }
