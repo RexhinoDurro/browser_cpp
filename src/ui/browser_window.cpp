@@ -513,107 +513,18 @@ void BrowserWindow::stopLoading() {
 }
 
 void BrowserWindow::showDefaultPage() {
-    // Create a simple HTML default page
-    std::string defaultHtml = R"(
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Simple Browser - Home</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f0f0f0;
-            color: #333;
-        }
-        h1 {
-            color: #2c3e50;
-            text-align: center;
-        }
-        .search-box {
-            width: 100%;
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 10px;
-            font-size: 16px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .bookmarks {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 40px;
-        }
-        .bookmark {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 120px;
-            height: 120px;
-            margin: 10px;
-            padding: 15px;
-            text-align: center;
-            text-decoration: none;
-            color: #333;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .bookmark:hover {
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        .bookmark-icon {
-            font-size: 36px;
-            margin-bottom: 10px;
-        }
-    </style>
-</head>
-<body>
-    <h1>Simple Browser</h1>
-    <p style="text-align: center;">Welcome to Simple Browser</p>
-    
-    <div class="bookmarks">
-        <a href="https://www.google.com" class="bookmark">
-            <div class="bookmark-icon">🔍</div>
-            <div>Google</div>
-        </a>
-        <a href="https://www.github.com" class="bookmark">
-            <div class="bookmark-icon">💻</div>
-            <div>GitHub</div>
-        </a>
-        <a href="https://www.wikipedia.org" class="bookmark">
-            <div class="bookmark-icon">📚</div>
-            <div>Wikipedia</div>
-        </a>
-        <a href="https://www.youtube.com" class="bookmark">
-            <div class="bookmark-icon">📺</div>
-            <div>YouTube</div>
-        </a>
-    </div>
-</body>
-</html>
-)";
-
-    // Load the default page properly
+    // Load the about:home page which is defined in browser.cpp
     if (m_browser) {
         std::string error;
         
-        // Parse the HTML directly
-        html::DOMTree domTree = m_browser->htmlParser()->parse(defaultHtml);
-        
-        // Set the DOM tree in the browser (you may need to add this method)
-        // For now, let's use loadUrl with a data URL
-        std::string dataUrl = "data:text/html;charset=utf-8," + defaultHtml;
-        
-        // Actually, let's load it as about:home
+        // Load the about:home page
         m_browser->loadUrl("about:home", error);
         
         if (!error.empty()) {
             std::cerr << "Error loading default page: " << error << std::endl;
         }
         
-        // Set a default URL for the about page
+        // Set initial state
         m_currentUrl = "about:home";
         m_history.clear();
         m_history.push_back(m_currentUrl);
@@ -623,7 +534,7 @@ void BrowserWindow::showDefaultPage() {
             m_browserControls->setAddressBarText(m_currentUrl);
         }
         
-        // Update window title explicitly
+        // Update window title
         setTitle("Simple Browser - Home");
         
         // Update UI state
