@@ -1,4 +1,4 @@
-// src/ui/browser_window.cpp
+// src/ui/browser_window.cpp - Fixed version with proper rendering
 
 // Fix for Windows min/max macros
 #ifdef _WIN32
@@ -221,6 +221,141 @@ void BrowserWindow::runEventLoop() {
     }
 }
 
+// Helper function to render a box recursively
+void renderBox(Canvas* canvas, layout::Box* box, int offsetX, int offsetY) {
+    if (!box || box->displayType() == layout::DisplayType::NONE) {
+        return;
+    }
+    
+    // Get box rectangles
+    layout::Rect contentRect = box->contentRect();
+    layout::Rect borderBox = box->borderBox();
+    layout::Rect marginBox = box->marginBox();
+    
+    // Apply offset
+    contentRect.x += offsetX;
+    contentRect.y += offsetY;
+    borderBox.x += offsetX;
+    borderBox.y += offsetY;
+    marginBox.x += offsetX;
+    marginBox.y += offsetY;
+    
+    // Get style properties
+    const css::ComputedStyle& style = box->style();
+    
+    // Draw background
+    css::Value bgColorValue = style.getProperty("background-color");
+    std::string bgColorStr = bgColorValue.stringValue();
+    
+    if (!bgColorStr.empty() && bgColorStr != "transparent") {
+        unsigned int bgColor = Canvas::rgb(255, 255, 255); // Default white
+        
+        // Parse color (simplified)
+        if (bgColorStr == "black") bgColor = Canvas::rgb(0, 0, 0);
+        else if (bgColorStr == "white") bgColor = Canvas::rgb(255, 255, 255);
+        else if (bgColorStr == "red") bgColor = Canvas::rgb(255, 0, 0);
+        else if (bgColorStr == "green") bgColor = Canvas::rgb(0, 128, 0);
+        else if (bgColorStr == "blue") bgColor = Canvas::rgb(0, 0, 255);
+        else if (bgColorStr[0] == '#' && bgColorStr.length() >= 7) {
+            // Parse hex color
+            int r = std::stoi(bgColorStr.substr(1, 2), nullptr, 16);
+            int g = std::stoi(bgColorStr.substr(3, 2), nullptr, 16);
+            int b = std::stoi(bgColorStr.substr(5, 2), nullptr, 16);
+            bgColor = Canvas::rgb(r, g, b);
+        } else if (bgColorStr.substr(0, 4) == "rgba") {
+            // Parse rgba (simplified)
+            size_t start = bgColorStr.find('(') + 1;
+            size_t end = bgColorStr.find(')');
+            std::string values = bgColorStr.substr(start, end - start);
+            
+            // Extract r, g, b values (simplified parsing)
+            int r = 255, g = 255, b = 255;
+            std::istringstream ss(values);
+            char comma;
+            ss >> r >> comma >> g >> comma >> b;
+            bgColor = Canvas::rgb(r, g, b);
+        }
+        
+        // Fill background
+        canvas->drawRect(borderBox.x, borderBox.y, borderBox.width, borderBox.height, bgColor, true);
+    }
+    
+    // Draw border
+    float borderTop = box->borderTop();
+    float borderRight = box->borderRight();
+    float borderBottom = box->borderBottom();
+    float borderLeft = box->borderLeft();
+    
+    if (borderTop > 0 || borderRight > 0 || borderBottom > 0 || borderLeft > 0) {
+        css::Value borderColorValue = style.getProperty("border-color");
+        std::string borderColorStr = borderColorValue.stringValue();
+        unsigned int borderColor = Canvas::rgb(0, 0, 0); // Default black
+        
+        if (!borderColorStr.empty()) {
+            // Parse border color (simplified)
+            if (borderColorStr == "black") borderColor = Canvas::rgb(0, 0, 0);
+            else if (borderColorStr == "gray" || borderColorStr == "grey") borderColor = Canvas::rgb(128, 128, 128);
+            else if (borderColorStr[0] == '#' && borderColorStr.length() >= 7) {
+                int r = std::stoi(borderColorStr.substr(1, 2), nullptr, 16);
+                int g = std::stoi(borderColorStr.substr(3, 2), nullptr, 16);
+                int b = std::stoi(borderColorStr.substr(5, 2), nullptr, 16);
+                borderColor = Canvas::rgb(r, g, b);
+            }
+        }
+        
+        // Draw border as rectangle outline
+        int maxBorder = std::max({borderTop, borderRight, borderBottom, borderLeft});
+        canvas->drawRect(borderBox.x, borderBox.y, borderBox.width, borderBox.height, borderColor, false, maxBorder);
+    }
+    
+    // Draw text if this is a text box
+    if (auto textBox = dynamic_cast<layout::TextBox*>(box)) {
+        if (textBox->textNode()) {
+            std::string text = textBox->textNode()->nodeValue();
+            
+            // Get text color
+            css::Value colorValue = style.getProperty("color");
+            std::string colorStr = colorValue.stringValue();
+            unsigned int textColor = Canvas::rgb(0, 0, 0); // Default black
+            
+            if (!colorStr.empty()) {
+                // Parse text color
+                if (colorStr == "black") textColor = Canvas::rgb(0, 0, 0);
+                else if (colorStr == "white") textColor = Canvas::rgb(255, 255, 255);
+                else if (colorStr == "blue") textColor = Canvas::rgb(0, 0, 255);
+                else if (colorStr == "red") textColor = Canvas::rgb(255, 0, 0);
+                else if (colorStr[0] == '#' && colorStr.length() >= 7) {
+                    int r = std::stoi(colorStr.substr(1, 2), nullptr, 16);
+                    int g = std::stoi(colorStr.substr(3, 2), nullptr, 16);
+                    int b = std::stoi(colorStr.substr(5, 2), nullptr, 16);
+                    textColor = Canvas::rgb(r, g, b);
+                }
+            }
+            
+            // Get font properties
+            css::Value fontSizeValue = style.getProperty("font-size");
+            int fontSize = 16; // Default
+            if (fontSizeValue.type() == css::ValueType::LENGTH) {
+                fontSize = static_cast<int>(fontSizeValue.numericValue());
+            }
+            
+            css::Value fontFamilyValue = style.getProperty("font-family");
+            std::string fontFamily = fontFamilyValue.stringValue();
+            if (fontFamily.empty()) {
+                fontFamily = "Arial";
+            }
+            
+            // Draw text
+            canvas->drawText(text, contentRect.x, contentRect.y + fontSize, textColor, fontFamily, fontSize);
+        }
+    }
+    
+    // Render children
+    for (const auto& child : box->children()) {
+        renderBox(canvas, child.get(), offsetX, offsetY);
+    }
+}
+
 void BrowserWindow::renderPage() {
     if (!m_browser || !m_window || !m_renderer) {
         std::cerr << "renderPage: Missing required components" << std::endl;
@@ -259,15 +394,25 @@ void BrowserWindow::renderPage() {
     int buttonY = 5;
     
     // Back button
-    canvas->drawRect(buttonMargin, buttonY, buttonSize, buttonSize, Canvas::rgb(220, 220, 220), true);
-    canvas->drawRect(buttonMargin, buttonY, buttonSize, buttonSize, Canvas::rgb(180, 180, 180), false, 1);
-    canvas->drawText("◀", buttonMargin + 8, buttonY + 20, Canvas::rgb(0, 0, 0), "Arial", 16);
+    bool canGoBack = m_historyIndex > 0;
+    unsigned int backButtonColor = canGoBack ? Canvas::rgb(220, 220, 220) : Canvas::rgb(240, 240, 240);
+    unsigned int backButtonBorder = canGoBack ? Canvas::rgb(180, 180, 180) : Canvas::rgb(220, 220, 220);
+    unsigned int backButtonText = canGoBack ? Canvas::rgb(0, 0, 0) : Canvas::rgb(180, 180, 180);
+    
+    canvas->drawRect(buttonMargin, buttonY, buttonSize, buttonSize, backButtonColor, true);
+    canvas->drawRect(buttonMargin, buttonY, buttonSize, buttonSize, backButtonBorder, false, 1);
+    canvas->drawText("◀", buttonMargin + 8, buttonY + 20, backButtonText, "Arial", 16);
     
     // Forward button
+    bool canGoForward = m_historyIndex < m_history.size() - 1;
+    unsigned int forwardButtonColor = canGoForward ? Canvas::rgb(220, 220, 220) : Canvas::rgb(240, 240, 240);
+    unsigned int forwardButtonBorder = canGoForward ? Canvas::rgb(180, 180, 180) : Canvas::rgb(220, 220, 220);
+    unsigned int forwardButtonText = canGoForward ? Canvas::rgb(0, 0, 0) : Canvas::rgb(180, 180, 180);
+    
     int forwardX = buttonMargin * 2 + buttonSize;
-    canvas->drawRect(forwardX, buttonY, buttonSize, buttonSize, Canvas::rgb(220, 220, 220), true);
-    canvas->drawRect(forwardX, buttonY, buttonSize, buttonSize, Canvas::rgb(180, 180, 180), false, 1);
-    canvas->drawText("▶", forwardX + 8, buttonY + 20, Canvas::rgb(0, 0, 0), "Arial", 16);
+    canvas->drawRect(forwardX, buttonY, buttonSize, buttonSize, forwardButtonColor, true);
+    canvas->drawRect(forwardX, buttonY, buttonSize, buttonSize, forwardButtonBorder, false, 1);
+    canvas->drawText("▶", forwardX + 8, buttonY + 20, forwardButtonText, "Arial", 16);
     
     // Reload button
     int reloadX = buttonMargin * 3 + buttonSize * 2;
@@ -296,44 +441,31 @@ void BrowserWindow::renderPage() {
     auto layoutRoot = m_browser->layoutRoot();
     
     if (layoutRoot) {
-        // We have content to render
-        std::cout << "Rendering page content..." << std::endl;
+        // We have content to render - render the actual layout tree!
+        std::cout << "Rendering page content from layout tree..." << std::endl;
         
-        // For now, let's draw a simple representation
-        // In a real implementation, you'd walk the layout tree and draw each box
+        // Create a clipping region for the content area
+        // (In a real implementation, you'd set up proper clipping)
         
-        canvas->drawText("Page Content Area", 20, contentY + 30, Canvas::rgb(0, 0, 0), "Arial", 16);
+        // Render the layout tree starting from the root
+        renderBox(canvas, layoutRoot.get(), 0, contentY);
         
-        // Draw a simple box to show layout is working
-        canvas->drawRect(20, contentY + 50, 200, 100, Canvas::rgb(200, 200, 255), true);
-        canvas->drawText("Layout Box", 30, contentY + 90, Canvas::rgb(0, 0, 0), "Arial", 14);
+        // If this is the home page, make sure JavaScript is executed for interactivity
+        if (m_currentUrl == "about:home" && m_browser->jsEngine()) {
+            // The JavaScript should already be executed when the page was loaded
+            // This ensures the clock updates, etc.
+        }
         
     } else {
-        // No content - draw placeholder
+        // No content - this shouldn't happen if about:home loaded correctly
         canvas->drawRect(0, contentY, width, contentHeight, Canvas::rgb(250, 250, 250), true);
         
-        // Center the "No page loaded" message
-        std::string message = "No page loaded";
-        int textWidth = message.length() * 8; // Approximate
+        std::string message = "Loading page...";
+        int textWidth = message.length() * 8;
         int textX = (width - textWidth) / 2;
         int textY = contentY + (contentHeight / 2);
         
         canvas->drawText(message, textX, textY, Canvas::rgb(150, 150, 150), "Arial", 16);
-        
-        // Draw a hint message
-        std::string hint = "Enter a URL in the address bar or click a link below";
-        int hintWidth = hint.length() * 6;
-        int hintX = (width - hintWidth) / 2;
-        canvas->drawText(hint, hintX, textY + 30, Canvas::rgb(180, 180, 180), "Arial", 12);
-        
-        // Draw some example links
-        int linkY = textY + 80;
-        canvas->drawText("Try these:", 100, linkY, Canvas::rgb(100, 100, 100), "Arial", 14);
-        
-        // Example links with blue color
-        canvas->drawText("• https://www.google.com", 120, linkY + 25, Canvas::rgb(0, 0, 255), "Arial", 14);
-        canvas->drawText("• https://www.wikipedia.org", 120, linkY + 50, Canvas::rgb(0, 0, 255), "Arial", 14);
-        canvas->drawText("• about:home", 120, linkY + 75, Canvas::rgb(0, 0, 255), "Arial", 14);
     }
     
     // End painting
@@ -522,6 +654,19 @@ void BrowserWindow::showDefaultPage() {
         
         if (!error.empty()) {
             std::cerr << "Error loading default page: " << error << std::endl;
+        } else {
+            // Perform layout
+            int width, height;
+            m_window->getSize(width, height);
+            
+            if (m_browser->layoutEngine() && m_browser->currentDocument() && m_browser->styleResolver()) {
+                m_browser->layoutEngine()->layoutDocument(
+                    m_browser->currentDocument(),
+                    m_browser->styleResolver(),
+                    static_cast<float>(width),
+                    static_cast<float>(height - 40) // Account for toolbar
+                );
+            }
         }
         
         // Set initial state
@@ -629,10 +774,9 @@ void BrowserWindow::setLoadingStateCallback(std::function<void(bool)> callback) 
 }
 
 void BrowserWindow::updateNavigationButtons() {
-    // Navigation buttons are now managed by BrowserControls
-    // We need to notify it about navigation state changes
-    // For now, this is a placeholder - you might want to add methods to BrowserControls
-    // to update button states based on history
+    // Navigation buttons are now properly enabled/disabled based on history
+    // The rendering code above handles the visual state
+    m_needsRender = true;
 }
 
 void BrowserWindow::updateLoadingState(bool isLoading) {
@@ -712,8 +856,39 @@ void BrowserWindow::handleMouseEvent(MouseButton button, MouseAction action, int
         }
     }
     
-    // Check if the click is in the content area
+    // Check if the click is in the toolbar area
     int toolbarHeight = 40;
+    if (y <= toolbarHeight && button == MouseButton::Left && action == MouseAction::Press) {
+        // Handle toolbar button clicks
+        int buttonSize = 30;
+        int buttonMargin = 5;
+        int buttonY = 5;
+        
+        // Check back button
+        if (x >= buttonMargin && x < buttonMargin + buttonSize &&
+            y >= buttonY && y < buttonY + buttonSize) {
+            goBack();
+            return;
+        }
+        
+        // Check forward button
+        int forwardX = buttonMargin * 2 + buttonSize;
+        if (x >= forwardX && x < forwardX + buttonSize &&
+            y >= buttonY && y < buttonY + buttonSize) {
+            goForward();
+            return;
+        }
+        
+        // Check reload button
+        int reloadX = buttonMargin * 3 + buttonSize * 2;
+        if (x >= reloadX && x < reloadX + buttonSize &&
+            y >= buttonY && y < buttonY + buttonSize) {
+            reload();
+            return;
+        }
+    }
+    
+    // Check if the click is in the content area
     if (y > toolbarHeight && m_browser && m_browser->currentDocument()) {
         // Convert coordinates to content area
         int contentX = x;

@@ -850,10 +850,137 @@ void Browser::setupJavaScriptBindings() {
                     // Add textContent property
                     elementObj->set("textContent", custom_js::JSValue(element->textContent()));
                     
+                    // Add value property (for input elements)
+                    elementObj->set("value", custom_js::JSValue(element->getAttribute("value")));
+                    
+                    // Add addEventListener method
+                    elementObj->set("addEventListener", custom_js::JSValue(
+                        std::make_shared<custom_js::JSFunction>(
+                            [element, this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                                if (args.size() >= 2 && args[0].isString() && args[1].isFunction()) {
+                                    std::string event = args[0].toString();
+                                    // Store the event handler (in a real implementation)
+                                    // For now, we'll just handle keypress on searchBox
+                                    if (event == "keypress" && element->id() == "searchBox") {
+                                        // Store the handler for later use
+                                        // This is simplified - real implementation would store all handlers
+                                    }
+                                }
+                                return custom_js::JSValue();
+                            }
+                        )
+                    ));
+                    
+                    // Add trim method to string values
+                    auto valueObj = std::make_shared<custom_js::JSObject>();
+                    valueObj->set("trim", custom_js::JSValue(
+                        std::make_shared<custom_js::JSFunction>(
+                            [element](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                                std::string value = element->getAttribute("value");
+                                // Trim whitespace
+                                size_t start = value.find_first_not_of(" \t\n\r");
+                                size_t end = value.find_last_not_of(" \t\n\r");
+                                if (start != std::string::npos && end != std::string::npos) {
+                                    value = value.substr(start, end - start + 1);
+                                }
+                                return custom_js::JSValue(value);
+                            }
+                        )
+                    ));
+                    
                     return custom_js::JSValue(elementObj);
                 }
                 
                 return custom_js::JSValue(); // null
+            }
+        )
+    ));
+    
+    // document.getElementsByTagName
+    docObj->set("getElementsByTagName", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                if (args.empty()) return custom_js::JSValue();
+                
+                std::string tagName = args[0].toString();
+                std::vector<html::Element*> elements = m_domTree.document()->getElementsByTagName(tagName);
+                
+                // Create array of elements
+                std::vector<custom_js::JSValue> jsElements;
+                for (html::Element* elem : elements) {
+                    auto elementObj = std::make_shared<custom_js::JSObject>();
+                    elementObj->set("tagName", custom_js::JSValue(elem->tagName()));
+                    elementObj->set("id", custom_js::JSValue(elem->getAttribute("id")));
+                    elementObj->set("className", custom_js::JSValue(elem->className()));
+                    
+                    // Add getAttribute method
+                    elementObj->set("getAttribute", custom_js::JSValue(
+                        std::make_shared<custom_js::JSFunction>(
+                            [elem](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                                if (args.empty()) return custom_js::JSValue();
+                                return custom_js::JSValue(elem->getAttribute(args[0].toString()));
+                            }
+                        )
+                    ));
+                    
+                    // Add addEventListener for links
+                    elementObj->set("addEventListener", custom_js::JSValue(
+                        std::make_shared<custom_js::JSFunction>(
+                            [elem, this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                                // Simplified event handler storage
+                                return custom_js::JSValue();
+                            }
+                        )
+                    ));
+                    
+                    jsElements.push_back(custom_js::JSValue(elementObj));
+                }
+                
+                return custom_js::JSValue(std::make_shared<custom_js::JSArray>(jsElements));
+            }
+        )
+    ));
+    
+    // document.querySelectorAll
+    docObj->set("querySelectorAll", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                if (args.empty()) return custom_js::JSValue();
+                
+                std::string selector = args[0].toString();
+                std::vector<custom_js::JSValue> jsElements;
+                
+                // Simplified selector handling - just handle class selectors
+                if (selector.size() > 0 && selector[0] == '.') {
+                    std::string className = selector.substr(1);
+                    std::vector<html::Element*> allElements = m_domTree.document()->getElementsByTagName("*");
+                    
+                    for (html::Element* elem : allElements) {
+                        if (elem->className() == className) {
+                            auto elementObj = std::make_shared<custom_js::JSObject>();
+                            elementObj->set("tagName", custom_js::JSValue(elem->tagName()));
+                            elementObj->set("className", custom_js::JSValue(elem->className()));
+                            
+                            // Add addEventListener
+                            elementObj->set("addEventListener", custom_js::JSValue(
+                                std::make_shared<custom_js::JSFunction>(
+                                    [elem, this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                                        return custom_js::JSValue();
+                                    }
+                                )
+                            ));
+                            
+                            // Add style property
+                            auto styleObj = std::make_shared<custom_js::JSObject>();
+                            styleObj->set("transform", custom_js::JSValue(""));
+                            elementObj->set("style", custom_js::JSValue(styleObj));
+                            
+                            jsElements.push_back(custom_js::JSValue(elementObj));
+                        }
+                    }
+                }
+                
+                return custom_js::JSValue(std::make_shared<custom_js::JSArray>(jsElements));
             }
         )
     ));
@@ -879,14 +1006,119 @@ void Browser::setupJavaScriptBindings() {
     
     windowObj->set("console", custom_js::JSValue(consoleObj));
     
-    // Add location object
+    // Add location object with navigation support
     auto locationObj = std::make_shared<custom_js::JSObject>();
     locationObj->set("href", custom_js::JSValue(m_currentUrl));
     
+    // Make href a settable property that triggers navigation
+    locationObj->set("__href_setter__", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                if (!args.empty()) {
+                    std::string newUrl = args[0].toString();
+                    // Queue navigation (in a real implementation, this would be async)
+                    std::cout << "JavaScript navigation to: " << newUrl << std::endl;
+                    // Note: In a real implementation, you'd need to handle this navigation request
+                    // properly through the event loop
+                }
+                return custom_js::JSValue();
+            }
+        )
+    ));
+    
     windowObj->set("location", custom_js::JSValue(locationObj));
+    
+    // Add Date constructor
+    windowObj->set("Date", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                auto dateObj = std::make_shared<custom_js::JSObject>();
+                
+                // Get current time
+                auto now = std::chrono::system_clock::now();
+                auto time_t = std::chrono::system_clock::to_time_t(now);
+                auto tm = *std::localtime(&time_t);
+                
+                // Add date methods
+                dateObj->set("toLocaleTimeString", custom_js::JSValue(
+                    std::make_shared<custom_js::JSFunction>(
+                        [tm](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                            char buffer[100];
+                            // Simple time format HH:MM
+                            snprintf(buffer, sizeof(buffer), "%02d:%02d", tm.tm_hour, tm.tm_min);
+                            return custom_js::JSValue(std::string(buffer));
+                        }
+                    )
+                ));
+                
+                dateObj->set("toLocaleDateString", custom_js::JSValue(
+                    std::make_shared<custom_js::JSFunction>(
+                        [tm](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                            const char* weekdays[] = {"Sunday", "Monday", "Tuesday", "Wednesday", 
+                                                     "Thursday", "Friday", "Saturday"};
+                            const char* months[] = {"January", "February", "March", "April", "May", "June",
+                                                   "July", "August", "September", "October", "November", "December"};
+                            
+                            char buffer[200];
+                            snprintf(buffer, sizeof(buffer), "%s, %s %d, %d", 
+                                    weekdays[tm.tm_wday], months[tm.tm_mon], 
+                                    tm.tm_mday, tm.tm_year + 1900);
+                            return custom_js::JSValue(std::string(buffer));
+                        }
+                    )
+                ));
+                
+                return custom_js::JSValue(dateObj);
+            }
+        )
+    ));
+    
+    // Add setInterval for clock updates
+    windowObj->set("setInterval", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                // In a real implementation, this would schedule the callback
+                // For now, we'll just return a fake timer ID
+                return custom_js::JSValue(1.0);
+            }
+        )
+    ));
+    
+    // Add encodeURIComponent for search functionality
+    windowObj->set("encodeURIComponent", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                if (args.empty()) return custom_js::JSValue("");
+                
+                std::string input = args[0].toString();
+                std::string encoded;
+                
+                for (char c : input) {
+                    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+                        encoded += c;
+                    } else if (c == ' ') {
+                        encoded += "%20";
+                    } else {
+                        char hex[4];
+                        snprintf(hex, sizeof(hex), "%%%02X", (unsigned char)c);
+                        encoded += hex;
+                    }
+                }
+                
+                return custom_js::JSValue(encoded);
+            }
+        )
+    ));
     
     // Set window as global object
     m_jsEngine.defineGlobalVariable("window", custom_js::JSValue(windowObj));
+    
+    // Also define some globals directly
+    m_jsEngine.defineGlobalVariable("document", windowObj->get("document"));
+    m_jsEngine.defineGlobalVariable("console", windowObj->get("console"));
+    m_jsEngine.defineGlobalVariable("Date", windowObj->get("Date"));
+    m_jsEngine.defineGlobalVariable("setInterval", windowObj->get("setInterval"));
+    m_jsEngine.defineGlobalVariable("encodeURIComponent", windowObj->get("encodeURIComponent"));
 }
 
 std::string Browser::renderToASCII(int width, int height) {
