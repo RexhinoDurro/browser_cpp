@@ -111,9 +111,7 @@ bool Control::handleMouseButton(int button, int action, int mods, int x, int y) 
     return false;
 }
 
-bool Control::handleKeyInput(int key, int scancode, int action, int mods) {
-    return false;
-}
+
 
 bool Control::contains(int x, int y) const {
     return x >= m_x && x < m_x + m_width && y >= m_y && y < m_y + m_height;
@@ -462,15 +460,26 @@ bool TextInput::handleKeyInput(int key, int scancode, int action, int mods) {
             return true;
             
         case 13: // Enter
-            if (m_submitHandler) {
+            if (m_submitHandler && !m_text.empty()) {
+                std::cout << "Enter key pressed in TextInput, submitting: " << m_text << std::endl;
                 m_submitHandler(m_text);
             }
+            return true;
+            
+        case 27: // Escape - clear focus
+            m_focused = false;
             return true;
             
         default:
             // Handle printable characters
             if (key >= 32 && key <= 126) {
                 char c = (char)key;
+                // Handle shift for uppercase letters
+                if (key >= 'A' && key <= 'Z') {
+                    if ((mods & 0x0001) == 0) { // Shift not pressed
+                        c = c + 32; // Convert to lowercase
+                    }
+                }
                 insertText(std::string(1, c));
                 return true;
             }
@@ -689,6 +698,11 @@ void Toolbar::draw(rendering::CustomRenderContext* ctx) {
     }
 }
 
+bool Control::handleKeyInput(int key, int scancode, int action, int mods) {
+    // Base implementation doesn't handle keys
+    return false;
+}
+
 bool Toolbar::handleMouseMove(int x, int y) {
     bool handled = Control::handleMouseMove(x, y);
     
@@ -839,7 +853,13 @@ void BrowserControls::setLoading(bool loading) {
     
     if (m_progressBar) {
         m_progressBar->setVisible(loading);
-        m_progressBar->setIndeterminate(loading);
+        if (loading) {
+            m_progressBar->setIndeterminate(true);
+        } else {
+            m_progressBar->setValue(1.0f); // 100% complete
+            // Hide after a short delay
+            // In a real implementation, you'd use a timer
+        }
     }
 }
 
@@ -860,121 +880,212 @@ void BrowserControls::layoutControls() {
     int buttonWidth = 32;
     int buttonHeight = 32;
     int buttonPadding = 4;
+    int buttonY = (height - buttonHeight) / 2;
     int addressBarHeight = 28;
+    int addressBarY = (height - addressBarHeight) / 2;
     
     // Create back button
     if (!m_backButton) {
         m_backButton = std::make_shared<Button>(
             buttonPadding, 
-            (height - buttonHeight) / 2, 
+            buttonY, 
             buttonWidth, 
             buttonHeight, 
             "◀"
         );
         m_backButton->setClickHandler([this]() {
             if (m_window) {
+                std::cout << "Back button clicked" << std::endl;
                 m_window->goBack();
             }
         });
         m_toolbar->addControl(m_backButton);
     } else {
-        m_backButton->setPosition(buttonPadding, (height - buttonHeight) / 2);
+        m_backButton->setPosition(buttonPadding, buttonY);
+        m_backButton->setSize(buttonWidth, buttonHeight);
     }
     
     // Create forward button
+    int forwardX = buttonPadding * 2 + buttonWidth;
     if (!m_forwardButton) {
         m_forwardButton = std::make_shared<Button>(
-            buttonPadding * 2 + buttonWidth, 
-            (height - buttonHeight) / 2, 
+            forwardX, 
+            buttonY, 
             buttonWidth, 
             buttonHeight, 
             "▶"
         );
         m_forwardButton->setClickHandler([this]() {
             if (m_window) {
+                std::cout << "Forward button clicked" << std::endl;
                 m_window->goForward();
             }
         });
         m_toolbar->addControl(m_forwardButton);
     } else {
-        m_forwardButton->setPosition(buttonPadding * 2 + buttonWidth, (height - buttonHeight) / 2);
+        m_forwardButton->setPosition(forwardX, buttonY);
+        m_forwardButton->setSize(buttonWidth, buttonHeight);
     }
     
     // Create reload button
+    int reloadX = buttonPadding * 3 + buttonWidth * 2;
     if (!m_reloadButton) {
         m_reloadButton = std::make_shared<Button>(
-            buttonPadding * 3 + buttonWidth * 2, 
-            (height - buttonHeight) / 2, 
+            reloadX, 
+            buttonY, 
             buttonWidth, 
             buttonHeight, 
             "↻"
         );
         m_reloadButton->setClickHandler([this]() {
             if (m_window) {
+                std::cout << "Reload button clicked" << std::endl;
                 m_window->reload();
             }
         });
         m_toolbar->addControl(m_reloadButton);
     } else {
-        m_reloadButton->setPosition(buttonPadding * 3 + buttonWidth * 2, (height - buttonHeight) / 2);
+        m_reloadButton->setPosition(reloadX, buttonY);
+        m_reloadButton->setSize(buttonWidth, buttonHeight);
     }
     
-    // Create stop button
+    // Create stop button (hidden initially, shares position with reload)
     if (!m_stopButton) {
         m_stopButton = std::make_shared<Button>(
-            buttonPadding * 3 + buttonWidth * 2, 
-            (height - buttonHeight) / 2, 
+            reloadX, 
+            buttonY, 
             buttonWidth, 
             buttonHeight, 
             "✕"
         );
         m_stopButton->setClickHandler([this]() {
             if (m_window) {
+                std::cout << "Stop button clicked" << std::endl;
                 m_window->stopLoading();
             }
         });
         m_stopButton->setVisible(false); // Hide initially
         m_toolbar->addControl(m_stopButton);
     } else {
-        m_stopButton->setPosition(buttonPadding * 3 + buttonWidth * 2, (height - buttonHeight) / 2);
+        m_stopButton->setPosition(reloadX, buttonY);
+        m_stopButton->setSize(buttonWidth, buttonHeight);
+    }
+    
+    // Create home button (optional, but useful)
+    int homeX = buttonPadding * 4 + buttonWidth * 3;
+    if (!m_homeButton) {
+        m_homeButton = std::make_shared<Button>(
+            homeX,
+            buttonY,
+            buttonWidth,
+            buttonHeight,
+            "⌂"
+        );
+        m_homeButton->setClickHandler([this]() {
+            if (m_window) {
+                std::cout << "Home button clicked" << std::endl;
+                m_window->loadUrl("about:home");
+            }
+        });
+        m_toolbar->addControl(m_homeButton);
+    } else {
+        m_homeButton->setPosition(homeX, buttonY);
+        m_homeButton->setSize(buttonWidth, buttonHeight);
     }
     
     // Create address bar
-    int addressBarX = buttonPadding * 4 + buttonWidth * 3;
-    int addressBarWidth = width - addressBarX - buttonPadding;
+    int addressBarX = buttonPadding * 5 + buttonWidth * 4;
+    int addressBarWidth = width - addressBarX - buttonPadding * 2 - buttonWidth; // Leave space for go button
     
     if (!m_addressBar) {
         m_addressBar = std::make_shared<TextInput>(
             addressBarX,
-            (height - addressBarHeight) / 2,
+            addressBarY,
             addressBarWidth,
             addressBarHeight
         );
-        m_addressBar->setPlaceholder("Enter URL...");
+        m_addressBar->setPlaceholder("Enter URL or search...");
+        
+        // Handle Enter key press
         m_addressBar->setSubmitHandler([this](const std::string& text) {
-            if (m_window) {
+            if (m_window && !text.empty()) {
+                std::cout << "Address bar submitted: " << text << std::endl;
                 m_window->loadUrl(text);
             }
         });
+        
+        // Handle text changes (optional - for auto-suggestions in future)
+        m_addressBar->setTextChangeHandler([this](const std::string& text) {
+            // Could implement auto-suggestions here
+            std::cout << "Address bar text changed: " << text << std::endl;
+        });
+        
         m_toolbar->addControl(m_addressBar);
     } else {
-        m_addressBar->setPosition(addressBarX, (height - addressBarHeight) / 2);
+        m_addressBar->setPosition(addressBarX, addressBarY);
         m_addressBar->setSize(addressBarWidth, addressBarHeight);
     }
     
-    // Create progress bar
+    // Create go button (next to address bar)
+    int goButtonX = addressBarX + addressBarWidth + buttonPadding;
+    if (!m_goButton) {
+        m_goButton = std::make_shared<Button>(
+            goButtonX,
+            buttonY,
+            buttonWidth,
+            buttonHeight,
+            "→"
+        );
+        m_goButton->setClickHandler([this]() {
+            if (m_window && m_addressBar) {
+                std::string url = m_addressBar->getText();
+                if (!url.empty()) {
+                    std::cout << "Go button clicked with URL: " << url << std::endl;
+                    m_window->loadUrl(url);
+                }
+            }
+        });
+        m_toolbar->addControl(m_goButton);
+    } else {
+        m_goButton->setPosition(goButtonX, buttonY);
+        m_goButton->setSize(buttonWidth, buttonHeight);
+    }
+    
+    // Create progress bar (at bottom of toolbar)
     if (!m_progressBar) {
         m_progressBar = std::make_shared<ProgressBar>(
             0,
-            height - 2,
+            height - 3,  // 3 pixels from bottom
             width,
-            2
+            3           // 3 pixels tall
         );
         m_progressBar->setVisible(false); // Hide initially
         m_toolbar->addControl(m_progressBar);
     } else {
-        m_progressBar->setPosition(0, height - 2);
-        m_progressBar->setSize(width, 2);
+        m_progressBar->setPosition(0, height - 3);
+        m_progressBar->setSize(width, 3);
+    }
+    
+    // Update initial button states
+    updateNavigationState();
+}
+
+// Add this helper method to update navigation button states
+void BrowserControls::updateNavigationState() {
+    if (!m_window) return;
+    
+    // Update back button state
+    if (m_backButton) {
+        // You'll need to add a method to check if can go back
+        // For now, just enable it
+        m_backButton->setEnabled(true);
+    }
+    
+    // Update forward button state
+    if (m_forwardButton) {
+        // You'll need to add a method to check if can go forward
+        // For now, just enable it
+        m_forwardButton->setEnabled(true);
     }
 }
 

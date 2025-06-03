@@ -49,6 +49,8 @@ BrowserWindow::~BrowserWindow() {
 }
 
 bool BrowserWindow::initialize() {
+    std::cout << "BrowserWindow::initialize() starting..." << std::endl;
+    
     // Initialize browser engine first
     if (!m_browser) {
         std::cerr << "Browser instance not set" << std::endl;
@@ -59,12 +61,14 @@ bool BrowserWindow::initialize() {
         std::cerr << "Failed to initialize browser engine" << std::endl;
         return false;
     }
+    std::cout << "Browser engine initialized" << std::endl;
     
     // Initialize renderer with paint system
     if (!m_renderer->initialize()) {
         std::cerr << "Failed to initialize renderer" << std::endl;
         return false;
     }
+    std::cout << "Renderer initialized" << std::endl;
     
     // Create and set paint system
     auto paintSystem = std::make_shared<rendering::PaintSystem>();
@@ -73,12 +77,19 @@ bool BrowserWindow::initialize() {
         return false;
     }
     m_renderer->setPaintSystem(paintSystem);
+    std::cout << "Paint system initialized" << std::endl;
     
     // Create window
+    if (!m_window) {
+        std::cerr << "Window not created!" << std::endl;
+        return false;
+    }
+    
     if (!m_window->create()) {
         std::cerr << "Failed to create window" << std::endl;
         return false;
     }
+    std::cout << "Window created successfully" << std::endl;
     
     // Set initial window title
     m_window->setTitle("Simple Browser");
@@ -86,6 +97,7 @@ bool BrowserWindow::initialize() {
     // Get window size
     int width, height;
     m_window->getSize(width, height);
+    std::cout << "Window size: " << width << "x" << height << std::endl;
     
     // Create render target using CustomRenderTarget
     m_renderTarget = std::make_shared<rendering::CustomRenderTarget>(width, height);
@@ -93,6 +105,7 @@ bool BrowserWindow::initialize() {
         std::cerr << "Failed to create render target" << std::endl;
         return false;
     }
+    std::cout << "Render target created" << std::endl;
     
     // Set up window callbacks
     m_window->setKeyCallback([this](Key key, KeyAction action) {
@@ -110,17 +123,21 @@ bool BrowserWindow::initialize() {
     m_window->setCloseCallback([this]() {
         handleCloseEvent();
     });
+    std::cout << "Window callbacks set" << std::endl;
     
     // Initialize browser controls
     if (!m_browserControls->initialize()) {
         std::cerr << "Failed to initialize browser controls" << std::endl;
         return false;
     }
+    std::cout << "Browser controls initialized" << std::endl;
     
     // Load default page
+    std::cout << "Loading default page..." << std::endl;
     showDefaultPage();
     
     m_initialized = true;
+    std::cout << "BrowserWindow::initialize() completed successfully" << std::endl;
     return true;
 }
 
@@ -143,7 +160,7 @@ void BrowserWindow::close() {
 }
 
 bool BrowserWindow::isOpen() const {
-    return m_initialized && m_window != nullptr;
+    return m_initialized && m_window && m_window->processEvents();
 }
 
 void BrowserWindow::setSize(int width, int height) {
@@ -207,18 +224,40 @@ void BrowserWindow::processEvents() {
 }
 
 void BrowserWindow::runEventLoop() {
-    while (isOpen()) {
-        processEvents();
+    std::cout << "Entering event loop..." << std::endl;
+    
+    // Make sure window is shown first
+    if (m_window && m_initialized) {
+        m_window->show();
+        std::cout << "Window shown" << std::endl;
+    }
+    
+    int frameCount = 0;
+    while (m_initialized && m_window) {
+        // Process window events
+        if (!m_window->processEvents()) {
+            std::cout << "Window closed or error in processEvents" << std::endl;
+            break;
+        }
         
         // Render page if needed
-        if (m_needsRender) {
+        if (m_needsRender || frameCount == 0) {
             renderPage();
             m_needsRender = false;
         }
         
+        frameCount++;
+        
+        // Debug output every 60 frames (about 1 second)
+        if (frameCount % 60 == 0) {
+            std::cout << "Event loop running... (frame " << frameCount << ")" << std::endl;
+        }
+        
         // Sleep a bit to reduce CPU usage
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(16)); // ~60 FPS
     }
+    
+    std::cout << "Exiting event loop" << std::endl;
 }
 
 // Helper function to render a box recursively
@@ -475,33 +514,48 @@ void BrowserWindow::renderPage() {
 bool BrowserWindow::loadUrl(const std::string& input) {
     std::string url = input;
     
-    // If no scheme is specified, default to http://
-    if (url.find("://") == std::string::npos) {
-        // Check if it's a file path
-        if (url.find('/') == 0 || url.find('\\') == 0 || 
-            (url.length() > 1 && url[1] == ':')) {
-            url = "file://" + url;
-        } else {
-            // If it contains a space, assume it's a search query
-            if (url.find(' ') != std::string::npos) {
-                // URL encode the search query
-                std::string encoded;
-                for (char c : url) {
-                    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
-                        encoded += c;
-                    } else if (c == ' ') {
-                        encoded += '+';
-                    } else {
-                        char hex[4];
-                        snprintf(hex, sizeof(hex), "%%%02X", (unsigned char)c);
-                        encoded += hex;
-                    }
-                }
-                url = "https://www.google.com/search?q=" + encoded;
+    // Trim whitespace
+    size_t start = url.find_first_not_of(" \t\n\r");
+    size_t end = url.find_last_not_of(" \t\n\r");
+    if (start != std::string::npos && end != std::string::npos) {
+        url = url.substr(start, end - start + 1);
+    }
+    
+    // Check if it's a URL or a search query
+    bool isUrl = false;
+    
+    // Check for common URL patterns
+    if (url.find("://") != std::string::npos) {
+        isUrl = true;
+    } else if (url.find(".") != std::string::npos) {
+        // Check if it looks like a domain
+        size_t dotPos = url.find(".");
+        if (dotPos > 0 && dotPos < url.length() - 1) {
+            // Has text before and after the dot
+            isUrl = true;
+        }
+    } else if (url.substr(0, 6) == "about:") {
+        isUrl = true;
+    }
+    
+    if (!isUrl) {
+        // It's a search query - use Google search
+        std::string encoded;
+        for (char c : url) {
+            if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+                encoded += c;
+            } else if (c == ' ') {
+                encoded += "+";
             } else {
-                url = "http://" + url;
+                char hex[4];
+                snprintf(hex, sizeof(hex), "%%%02X", (unsigned char)c);
+                encoded += hex;
             }
         }
+        url = "https://www.google.com/search?q=" + encoded;
+    } else if (url.find("://") == std::string::npos) {
+        // Add http:// if no protocol specified
+        url = "http://" + url;
     }
     
     // Now load the URL
@@ -961,7 +1015,15 @@ void BrowserWindow::handleResizeEvent(int width, int height) {
 }
 
 void BrowserWindow::handleCloseEvent() {
-    // Handle window close
+    // Don't immediately set initialized to false
+    // First check if we should really close
+    if (m_window) {
+        // Actually close the window
+        m_window->close();
+        m_window.reset();
+    }
+    
+    // Now set initialized to false
     m_initialized = false;
 }
 

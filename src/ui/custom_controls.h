@@ -214,12 +214,14 @@ private:
     std::shared_ptr<Button> m_forwardButton;
     std::shared_ptr<Button> m_reloadButton;
     std::shared_ptr<Button> m_stopButton;
+    std::shared_ptr<Button> m_homeButton;      // Add this
+    std::shared_ptr<Button> m_goButton;     
     std::shared_ptr<TextInput> m_addressBar;
     std::shared_ptr<ProgressBar> m_progressBar;
     
     // Initialize renderer
     bool initializeRenderer();
-    
+    void updateNavigationState();  
     // Layout controls
     void layoutControls();
 };

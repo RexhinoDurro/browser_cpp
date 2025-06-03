@@ -370,17 +370,21 @@ void Win32Window::close() {
 }
 
 bool Win32Window::processEvents() {
-    MSG msg;
-    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-        
-        if (msg.message == WM_QUIT) {
-            return false; // Quit
-        }
+    if (!m_hwnd) {
+        return false; // Window is closed
     }
     
-    return true; // Continue
+    MSG msg;
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+        if (msg.message == WM_QUIT) {
+            return false; // Application is quitting
+        }
+        
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    
+    return m_hwnd != NULL; // Continue if window still exists
 }
 
 void* Win32Window::getNativeHandle() const {
@@ -472,10 +476,16 @@ LRESULT CALLBACK Win32Window::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
         case WM_CLOSE:
             if (window) {
                 window->notifyCloseEvent();
+                // Actually destroy the window
+                DestroyWindow(hwnd);
             }
             return 0;
             
         case WM_DESTROY:
+    // Remove from window map before posting quit
+            if (window) {
+                s_windowMap.erase(hwnd);
+            }
             PostQuitMessage(0);
             return 0;
             

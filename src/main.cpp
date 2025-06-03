@@ -186,8 +186,7 @@ int main(int argc, char* argv[]) {
 #ifdef _WIN32
         SetConsoleCtrlHandler([](DWORD) -> BOOL {
             shutdownHandler(0);
-            // shutdownHandler calls exit(), so this is unreachable
-            // but needed to satisfy the compiler
+            return TRUE;
         }, TRUE);
 #else
         signal(SIGINT, shutdownHandler);
@@ -214,11 +213,6 @@ int main(int argc, char* argv[]) {
             } catch (const std::exception& e) {
                 std::cerr << "Warning: Failed to create cache directory: " << e.what() << std::endl;
             }
-            
-            // Initialize resource loader with cache
-            if (g_browser->resourceLoader()) {
-                g_browser->resourceLoader()->initialize(cacheDir);
-            }
         }
         
         // Configure storage
@@ -231,9 +225,6 @@ int main(int argc, char* argv[]) {
             } catch (const std::exception& e) {
                 std::cerr << "Warning: Failed to create storage directory: " << e.what() << std::endl;
             }
-            
-            // Initialize storage manager
-            // Note: This would be implemented in the Browser class
         }
         
         // Create window configuration
@@ -256,6 +247,8 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         
+        std::cout << "Browser window initialized successfully" << std::endl;
+        
         // Set up callbacks
         g_window->setUrlChangeCallback([](const std::string& url) {
             std::cout << "Navigated to: " << url << std::endl;
@@ -275,18 +268,21 @@ int main(int argc, char* argv[]) {
             }
         });
         
-        // Show window
-               
-        std::cout << "Starting browser..." << std::endl;
+        // IMPORTANT: Show the window!
+        std::cout << "Showing browser window..." << std::endl;
         g_window->show();
         
-        // Load initial URL if specified (otherwise showDefaultPage was already called in initialize)
+        // Load initial URL if specified
         if (!args.initialUrl.empty()) {
             std::cout << "Loading URL: " << args.initialUrl << std::endl;
             g_window->loadUrl(args.initialUrl);
         }
+        // Note: showDefaultPage() is already called in BrowserWindow::initialize()
         
-        // Run event loop
+        // Give the window time to show
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        
+        // Run event loop - THIS IS CRITICAL!
         std::cout << "Browser is running. Press Ctrl+C to quit." << std::endl;
         g_window->runEventLoop();
         
