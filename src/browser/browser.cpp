@@ -184,110 +184,237 @@ bool Browser::loadAboutPage(const std::string& url, std::string& error) {
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             margin: 0;
             padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
+            color: #333;
         }
         
         .container {
-            max-width: 600px;
+            max-width: 800px;
             width: 100%;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
             padding: 40px;
             text-align: center;
+            backdrop-filter: blur(10px);
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         h1 {
-            color: #333;
+            color: #5a67d8;
             margin-bottom: 10px;
+            font-size: 48px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
         }
         
         .subtitle {
-            color: #666;
+            color: #718096;
             margin-bottom: 30px;
+            font-size: 20px;
+        }
+        
+        .search-container {
+            position: relative;
+            margin-bottom: 40px;
         }
         
         .search-box {
             width: 100%;
-            padding: 12px 20px;
-            font-size: 16px;
-            border: 2px solid #ddd;
-            border-radius: 25px;
+            padding: 15px 50px 15px 20px;
+            font-size: 18px;
+            border: 3px solid #e2e8f0;
+            border-radius: 50px;
             outline: none;
-            transition: border-color 0.3s;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
         .search-box:focus {
-            border-color: #4285f4;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1), 0 4px 6px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
         }
         
         .search-button {
-            margin-top: 20px;
-            padding: 10px 30px;
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 12px 24px;
             font-size: 16px;
-            background-color: #4285f4;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 25px;
+            border-radius: 50px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: all 0.3s;
+            font-weight: bold;
         }
         
         .search-button:hover {
-            background-color: #357ae8;
+            transform: translateY(-50%) scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
         
-        .links {
-            margin-top: 40px;
-            display: flex;
-            justify-content: center;
+        .search-button:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+        
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 20px;
+            margin-bottom: 40px;
         }
         
-        .link {
-            color: #4285f4;
+        .link-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
             text-decoration: none;
+            color: #333;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 2px solid transparent;
+        }
+        
+        .link-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+        }
+        
+        .link-card h3 {
+            margin: 10px 0 5px 0;
+            color: #5a67d8;
+            font-size: 18px;
+        }
+        
+        .link-card p {
+            margin: 0;
+            color: #718096;
             font-size: 14px;
         }
         
-        .link:hover {
-            text-decoration: underline;
+        .link-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
         }
         
         .clock {
             position: fixed;
             top: 20px;
             right: 20px;
-            font-size: 14px;
-            color: #666;
+            font-size: 18px;
+            color: white;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
         }
         
         .tips {
             margin-top: 40px;
-            padding: 20px;
-            background-color: #f0f7ff;
-            border-radius: 8px;
+            padding: 25px;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e6edff 100%);
+            border-radius: 15px;
             text-align: left;
+            border-left: 5px solid #667eea;
         }
         
         .tips h3 {
-            color: #333;
-            margin-bottom: 10px;
+            color: #5a67d8;
+            margin-bottom: 15px;
+            font-size: 22px;
         }
         
         .tips ul {
-            color: #666;
+            color: #4a5568;
             margin: 0;
-            padding-left: 20px;
+            padding-left: 25px;
+            line-height: 1.8;
         }
         
         .tips li {
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+        
+        .feature-item {
+            background: linear-gradient(135deg, #fbb6ce 0%, #f687b3 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .feature-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        
+        .feature-item h4 {
+            margin: 15px 0 10px 0;
+            font-size: 20px;
+        }
+        
+        .feature-icon {
+            font-size: 48px;
+        }
+        
+        #greeting {
+            font-size: 24px;
+            color: #5a67d8;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            font-size: 24px;
+            transition: all 0.3s;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -295,31 +422,91 @@ bool Browser::loadAboutPage(const std::string& url, std::string& error) {
     <div class="clock" id="clock"></div>
     
     <div class="container">
-        <h1>Welcome to Simple Browser</h1>
+        <h1>🌐 Welcome to Simple Browser</h1>
         <p class="subtitle">Your gateway to the web</p>
         
-        <input type="text" id="searchBox" class="search-box" placeholder="Search or enter URL..." />
-        <button class="search-button" onclick="performSearch()">Search</button>
+        <div id="greeting"></div>
         
-        <div class="links">
-            <a href="https://www.google.com" class="link">Google</a>
-            <a href="https://www.wikipedia.org" class="link">Wikipedia</a>
-            <a href="https://www.github.com" class="link">GitHub</a>
-            <a href="https://news.ycombinator.com" class="link">Hacker News</a>
+        <div class="search-container">
+            <input type="text" id="searchBox" class="search-box" placeholder="Search or enter URL..." />
+            <button class="search-button" onclick="performSearch()">Go</button>
+        </div>
+        
+        <div class="quick-links">
+            <a href="https://www.google.com" class="link-card">
+                <div class="link-icon">🔍</div>
+                <h3>Google</h3>
+                <p>Search the web</p>
+            </a>
+            <a href="https://www.wikipedia.org" class="link-card">
+                <div class="link-icon">📚</div>
+                <h3>Wikipedia</h3>
+                <p>Free encyclopedia</p>
+            </a>
+            <a href="https://www.github.com" class="link-card">
+                <div class="link-icon">💻</div>
+                <h3>GitHub</h3>
+                <p>Code repository</p>
+            </a>
+            <a href="https://news.ycombinator.com" class="link-card">
+                <div class="link-icon">📰</div>
+                <h3>Hacker News</h3>
+                <p>Tech news</p>
+            </a>
+        </div>
+        
+        <div class="feature-grid">
+            <div class="feature-item" onclick="showAlert('Feature coming soon!')">
+                <div class="feature-icon">⚡</div>
+                <h4>Fast Browsing</h4>
+                <p>Lightning quick page loads</p>
+            </div>
+            <div class="feature-item" onclick="showAlert('Privacy features enabled!')">
+                <div class="feature-icon">🔒</div>
+                <h4>Secure</h4>
+                <p>Your privacy matters</p>
+            </div>
+            <div class="feature-item" onclick="showAlert('Customization coming soon!')">
+                <div class="feature-icon">🎨</div>
+                <h4>Customizable</h4>
+                <p>Make it yours</p>
+            </div>
         </div>
         
         <div class="tips">
-            <h3>Quick Tips:</h3>
+            <h3>💡 Quick Tips:</h3>
             <ul>
                 <li>Type a URL or search query in the box above</li>
-                <li>Press Enter or click Search to navigate</li>
+                <li>Press Enter or click Go to navigate</li>
                 <li>Use the navigation buttons in the toolbar</li>
-                <li>This browser supports basic HTML, CSS, and JavaScript</li>
+                <li>Click on any quick link card to visit popular sites</li>
+                <li>Try clicking the feature cards below!</li>
             </ul>
         </div>
     </div>
     
+    <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    
     <script>
+        var isDarkMode = false;
+        
+        // Greeting based on time of day
+        function updateGreeting() {
+            var now = new Date();
+            var hour = now.getHours();
+            var greeting = '';
+            
+            if (hour < 12) {
+                greeting = '☀️ Good Morning!';
+            } else if (hour < 18) {
+                greeting = '🌤️ Good Afternoon!';
+            } else {
+                greeting = '🌙 Good Evening!';
+            }
+            
+            document.getElementById('greeting').textContent = greeting;
+        }
+        
         // Clock functionality
         function updateClock() {
             var now = new Date();
@@ -328,8 +515,11 @@ bool Browser::loadAboutPage(const std::string& url, std::string& error) {
             document.getElementById('clock').textContent = dateStr + ' ' + timeStr;
         }
         
-        // Update clock immediately and then every second
+        // Update greeting and clock immediately
+        updateGreeting();
         updateClock();
+        
+        // Update clock every second
         setInterval(updateClock, 1000);
         
         // Search functionality
@@ -337,6 +527,12 @@ bool Browser::loadAboutPage(const std::string& url, std::string& error) {
             var searchBox = document.getElementById('searchBox');
             var query = searchBox.value.trim();
             if (query) {
+                // Add search animation
+                searchBox.style.transform = 'scale(0.98)';
+                setTimeout(function() {
+                    searchBox.style.transform = 'scale(1)';
+                }, 100);
+                
                 // Check if it's a URL
                 if (query.indexOf('.') !== -1 && query.indexOf(' ') === -1) {
                     // Likely a URL
@@ -358,27 +554,92 @@ bool Browser::loadAboutPage(const std::string& url, std::string& error) {
             }
         });
         
-        // Handle link clicks
-        var links = document.querySelectorAll('.link');
+        // Handle link clicks with animation
+        var links = document.querySelectorAll('.link-card');
         for (var i = 0; i < links.length; i++) {
             links[i].addEventListener('click', function(e) {
                 e.preventDefault();
-                window.location.href = this.href;
+                var card = this;
+                card.style.transform = 'scale(0.95)';
+                setTimeout(function() {
+                    window.location.href = card.href;
+                }, 150);
             });
         }
         
         // Animate search box on focus
         var searchBox = document.getElementById('searchBox');
         searchBox.addEventListener('focus', function() {
-            this.style.transform = 'scale(1.02)';
+            this.parentElement.style.transform = 'scale(1.02)';
         });
         
         searchBox.addEventListener('blur', function() {
-            this.style.transform = 'scale(1)';
+            this.parentElement.style.transform = 'scale(1)';
         });
+        
+        // Show alert for features
+        function showAlert(message) {
+            // Create custom alert
+            var alertDiv = document.createElement('div');
+            alertDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 1000; animation: popIn 0.3s ease-out;';
+            alertDiv.innerHTML = '<h3 style="margin: 0 0 15px 0; color: #5a67d8;">' + message + '</h3><button onclick="this.parentElement.remove()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">OK</button>';
+            document.body.appendChild(alertDiv);
+        }
+        
+        // Theme toggle
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            var body = document.body;
+            var button = document.querySelector('.theme-toggle');
+            
+            if (isDarkMode) {
+                body.style.background = 'linear-gradient(135deg, #1a202c 0%, #2d3748 100%)';
+                button.textContent = '☀️';
+            } else {
+                body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                button.textContent = '🌙';
+            }
+        }
+        
+        // Add some particle effects
+        function createParticle() {
+            var particle = document.createElement('div');
+            particle.style.cssText = 'position: fixed; width: 4px; height: 4px; background: white; border-radius: 50%; pointer-events: none; opacity: 0.8;';
+            particle.style.left = Math.random() * window.innerWidth + 'px';
+            particle.style.top = '-10px';
+            document.body.appendChild(particle);
+            
+            var speed = 1 + Math.random() * 2;
+            var drift = (Math.random() - 0.5) * 2;
+            
+            function animate() {
+                var top = parseFloat(particle.style.top);
+                var left = parseFloat(particle.style.left);
+                
+                particle.style.top = (top + speed) + 'px';
+                particle.style.left = (left + drift) + 'px';
+                particle.style.opacity = parseFloat(particle.style.opacity) - 0.01;
+                
+                if (top < window.innerHeight && parseFloat(particle.style.opacity) > 0) {
+                    requestAnimationFrame(animate);
+                } else {
+                    particle.remove();
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Create particles occasionally
+        setInterval(createParticle, 500);
         
         // Focus search box on page load
         searchBox.focus();
+        
+        // Add CSS animation
+        var style = document.createElement('style');
+        style.textContent = '@keyframes popIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }';
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
@@ -717,30 +978,10 @@ void Browser::setupJavaScriptBindings() {
                     elementObj->set("className", custom_js::JSValue(element->className()));
                     
                     // Value property for input elements
-                    if (element->tagName() == "input") {
-                        elementObj->set("value", custom_js::JSValue(element->getAttribute("value")));
-                        
-                        // Add value getter that returns an object with trim()
-                        auto valueObj = std::make_shared<custom_js::JSObject>();
-                        valueObj->set("trim", custom_js::JSValue(
-                            std::make_shared<custom_js::JSFunction>(
-                                [element](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
-                                    std::string value = element->getAttribute("value");
-                                    // Trim whitespace
-                                    size_t start = value.find_first_not_of(" \t\n\r");
-                                    size_t end = value.find_last_not_of(" \t\n\r");
-                                    if (start != std::string::npos && end != std::string::npos) {
-                                        value = value.substr(start, end - start + 1);
-                                    } else if (start == std::string::npos) {
-                                        value = "";
-                                    }
-                                    return custom_js::JSValue(value);
-                                }
-                            )
-                        ));
-                        
-                        // Override value property to support .trim()
-                        elementObj->set("value", custom_js::JSValue(valueObj));
+                    if (element->tagName() == "input" || element->tagName() == "INPUT") {
+                        // Create a proper value property
+                        std::string value = element->getAttribute("value");
+                        elementObj->set("value", custom_js::JSValue(value));
                     }
                     
                     // textContent property
@@ -752,6 +993,8 @@ void Browser::setupJavaScriptBindings() {
                     // style property
                     auto styleObj = std::make_shared<custom_js::JSObject>();
                     styleObj->set("transform", custom_js::JSValue(""));
+                    styleObj->set("background", custom_js::JSValue(""));
+                    styleObj->set("cssText", custom_js::JSValue(""));
                     elementObj->set("style", custom_js::JSValue(styleObj));
                     
                     // addEventListener method
@@ -793,8 +1036,15 @@ void Browser::setupJavaScriptBindings() {
                     ));
                     
                     // For links, add href property
-                    if (element->tagName() == "a") {
+                    if (element->tagName() == "a" || element->tagName() == "A") {
                         elementObj->set("href", custom_js::JSValue(element->getAttribute("href")));
+                    }
+                    
+                    // parentElement property
+                    if (element->parentElement()) {
+                        auto parentObj = std::make_shared<custom_js::JSObject>();
+                        parentObj->set("style", custom_js::JSValue(styleObj));
+                        elementObj->set("parentElement", custom_js::JSValue(parentObj));
                     }
                     
                     return custom_js::JSValue(elementObj);
@@ -877,7 +1127,7 @@ void Browser::setupJavaScriptBindings() {
                             ));
                             
                             // Add href for links
-                            if (elem->tagName() == "a") {
+                            if (elem->tagName() == "a" || elem->tagName() == "A") {
                                 elementObj->set("href", custom_js::JSValue(elem->getAttribute("href")));
                             }
                             
@@ -891,10 +1141,71 @@ void Browser::setupJavaScriptBindings() {
                     }
                 }
                 
-                return custom_js::JSValue(std::make_shared<custom_js::JSArray>(jsElements));
+                // Create array object with length property
+                auto arrayObj = std::make_shared<custom_js::JSObject>();
+                arrayObj->set("length", custom_js::JSValue(static_cast<double>(jsElements.size())));
+                
+                // Add array elements
+                for (size_t i = 0; i < jsElements.size(); ++i) {
+                    arrayObj->set(std::to_string(i), jsElements[i]);
+                }
+                
+                return custom_js::JSValue(arrayObj);
             }
         )
     ));
+    
+    // document.createElement
+    docObj->set("createElement", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                if (args.empty()) return custom_js::JSValue();
+                
+                std::string tagName = args[0].toString();
+                auto element = m_domTree.document()->createElement(tagName);
+                
+                auto elementObj = std::make_shared<custom_js::JSObject>();
+                elementObj->set("tagName", custom_js::JSValue(tagName));
+                
+                // Style object
+                auto styleObj = std::make_shared<custom_js::JSObject>();
+                styleObj->set("cssText", custom_js::JSValue(""));
+                elementObj->set("style", custom_js::JSValue(styleObj));
+                
+                return custom_js::JSValue(elementObj);
+            }
+        )
+    ));
+    
+    // document.head
+    auto headElement = m_domTree.document()->getElementsByTagName("head");
+    if (!headElement.empty()) {
+        auto headObj = std::make_shared<custom_js::JSObject>();
+        headObj->set("appendChild", custom_js::JSValue(
+            std::make_shared<custom_js::JSFunction>(
+                [](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                    std::cout << "appendChild called on head" << std::endl;
+                    return custom_js::JSValue();
+                }
+            )
+        ));
+        docObj->set("head", custom_js::JSValue(headObj));
+    }
+    
+    // document.body
+    auto bodyElement = m_domTree.document()->getElementsByTagName("body");
+    if (!bodyElement.empty()) {
+        auto bodyObj = std::make_shared<custom_js::JSObject>();
+        bodyObj->set("appendChild", custom_js::JSValue(
+            std::make_shared<custom_js::JSFunction>(
+                [](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                    std::cout << "appendChild called on body" << std::endl;
+                    return custom_js::JSValue();
+                }
+            )
+        ));
+        docObj->set("body", custom_js::JSValue(bodyObj));
+    }
     
     windowObj->set("document", custom_js::JSValue(docObj));
     
@@ -919,10 +1230,12 @@ void Browser::setupJavaScriptBindings() {
     
     // Add location object with WORKING navigation
     auto locationObj = std::make_shared<custom_js::JSObject>();
+    
+    // Create href property with getter/setter
     locationObj->set("href", custom_js::JSValue(m_currentUrl));
     
-    // Create a special setter for href that triggers navigation
-    windowObj->set("__navigateTo__", custom_js::JSValue(
+    // Add a special property for navigation
+    locationObj->set("__setHref__", custom_js::JSValue(
         std::make_shared<custom_js::JSFunction>(
             [this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
                 if (!args.empty()) {
@@ -935,36 +1248,18 @@ void Browser::setupJavaScriptBindings() {
         )
     ));
     
-    // Override location object to use property descriptor
-    auto locationWrapper = std::make_shared<custom_js::JSObject>();
-    locationWrapper->set("get", custom_js::JSValue(
-        std::make_shared<custom_js::JSFunction>(
-            [this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
-                auto loc = std::make_shared<custom_js::JSObject>();
-                loc->set("href", custom_js::JSValue(m_currentUrl));
-                return custom_js::JSValue(loc);
-            }
-        )
-    ));
-    
-    locationWrapper->set("set", custom_js::JSValue(
-        std::make_shared<custom_js::JSFunction>(
-            [this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
-                if (!args.empty() && args[0].isObject()) {
-                    auto obj = args[0].toObject();
-                    if (obj && obj->has("href")) {
-                        std::string newUrl = obj->get("href").toString();
-                        std::cout << "Setting location.href to: " << newUrl << std::endl;
-                        m_pendingNavigationUrl = newUrl;
-                    }
-                }
-                return custom_js::JSValue();
-            }
-        )
-    ));
-    
-    // Make location work with direct property access
     windowObj->set("location", custom_js::JSValue(locationObj));
+    
+    // Override location.href setter in JavaScript
+    m_jsEngine.executeScript(R"(
+        Object.defineProperty(window.location, 'href', {
+            get: function() { return window.location.__href__ || ''; },
+            set: function(value) { 
+                console.log('Setting location.href to: ' + value);
+                window.location.__setHref__(value);
+            }
+        });
+    )", {}, {});
     
     // Add Date constructor
     windowObj->set("Date", custom_js::JSValue(
@@ -976,6 +1271,15 @@ void Browser::setupJavaScriptBindings() {
                 auto now = std::chrono::system_clock::now();
                 auto time_t = std::chrono::system_clock::to_time_t(now);
                 auto tm = *std::localtime(&time_t);
+                
+                // Add getHours method
+                dateObj->set("getHours", custom_js::JSValue(
+                    std::make_shared<custom_js::JSFunction>(
+                        [tm](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                            return custom_js::JSValue(static_cast<double>(tm.tm_hour));
+                        }
+                    )
+                ));
                 
                 // Add date methods
                 dateObj->set("toLocaleTimeString", custom_js::JSValue(
@@ -1047,6 +1351,57 @@ void Browser::setupJavaScriptBindings() {
         )
     ));
     
+    // Add setTimeout
+    windowObj->set("setTimeout", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                // In a real implementation, this would schedule the callback
+                return custom_js::JSValue(1.0);
+            }
+        )
+    ));
+    
+    // Add requestAnimationFrame
+    windowObj->set("requestAnimationFrame", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                // In a real implementation, this would schedule the callback
+                return custom_js::JSValue(1.0);
+            }
+        )
+    ));
+    
+    // Add window.innerWidth and window.innerHeight
+    windowObj->set("innerWidth", custom_js::JSValue(1024.0));
+    windowObj->set("innerHeight", custom_js::JSValue(768.0));
+    
+    // Add Math object
+    auto mathObj = std::make_shared<custom_js::JSObject>();
+    mathObj->set("random", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                return custom_js::JSValue(static_cast<double>(rand()) / RAND_MAX);
+            }
+        )
+    ));
+    
+    windowObj->set("Math", custom_js::JSValue(mathObj));
+    
+    // Add parseFloat
+    windowObj->set("parseFloat", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                if (args.empty()) return custom_js::JSValue(0.0);
+                std::string str = args[0].toString();
+                try {
+                    return custom_js::JSValue(std::stod(str));
+                } catch (...) {
+                    return custom_js::JSValue(0.0);
+                }
+            }
+        )
+    ));
+    
     // Set window as global object
     m_jsEngine.defineGlobalVariable("window", custom_js::JSValue(windowObj));
     
@@ -1055,7 +1410,11 @@ void Browser::setupJavaScriptBindings() {
     m_jsEngine.defineGlobalVariable("console", windowObj->get("console"));
     m_jsEngine.defineGlobalVariable("Date", windowObj->get("Date"));
     m_jsEngine.defineGlobalVariable("setInterval", windowObj->get("setInterval"));
+    m_jsEngine.defineGlobalVariable("setTimeout", windowObj->get("setTimeout"));
     m_jsEngine.defineGlobalVariable("encodeURIComponent", windowObj->get("encodeURIComponent"));
+    m_jsEngine.defineGlobalVariable("requestAnimationFrame", windowObj->get("requestAnimationFrame"));
+    m_jsEngine.defineGlobalVariable("Math", windowObj->get("Math"));
+    m_jsEngine.defineGlobalVariable("parseFloat", windowObj->get("parseFloat"));
     
     // Add location as a special global with setter support
     m_jsEngine.defineGlobalVariable("location", custom_js::JSValue(locationObj));
