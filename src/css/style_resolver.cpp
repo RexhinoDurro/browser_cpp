@@ -213,6 +213,15 @@ void StyleResolver::resolveStyleForElement(html::Element* element, const Compute
     
     // 1. Apply initial values
     style.applyInitialValues();
+
+    std::string tagName = element->tagName();
+    if (tagName == "div" || tagName == "p" || tagName == "h1" || tagName == "h2" || 
+        tagName == "ul" || tagName == "li" || tagName == "body" || tagName == "html") {
+        style.setProperty("display", Value("block"));
+    } else if (tagName == "span" || tagName == "a" || tagName == "strong" || tagName == "em") {
+        style.setProperty("display", Value("inline"));
+    }
+    
     
     // 2. Inherit from parent style
     style.inheritFrom(parentStyle);
