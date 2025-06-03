@@ -307,9 +307,19 @@ void HTMLParser::handleBeforeAttributeNameState() {
     if (std::isspace(c)) {
         // Skip whitespace
         consumeCharacter();
-    } else if (c == '/' || c == '>') {
-        m_state = c == '/' ? ParserState::SELF_CLOSING_START_TAG : ParserState::DATA;
-        reconsume();  // Reprocess in the new state
+    } else if (c == '/') {
+        // Check if next character exists
+        if (hasMoreChars()) {
+            m_state = ParserState::SELF_CLOSING_START_TAG;
+            consumeCharacter();
+        } else {
+            parseError("EOF after / in tag");
+            return;
+        }
+    } else if (c == '>') {
+        m_state = ParserState::DATA;
+        consumeCharacter();
+        return;  // Return the token
     } else if (c == '=') {
         parseError("Unexpected '=' in before attribute name state");
         m_tempBuffer = "=";  // Start attribute name with =
@@ -449,6 +459,16 @@ void HTMLParser::handleAttributeValueUnquotedState() {
     if (std::isspace(c)) {
         m_state = ParserState::BEFORE_ATTRIBUTE_NAME;
         consumeCharacter();
+    } else if (c == '/') {
+        // Check if this is the start of a self-closing tag
+        if (hasMoreChars() && peekNext() == '>') {
+            m_state = ParserState::SELF_CLOSING_START_TAG;
+            consumeCharacter();
+        } else {
+            // It's part of the attribute value
+            m_currentToken.attributes[m_tempBuffer] += c;
+            consumeCharacter();
+        }
     } else if (c == '>') {
         m_state = ParserState::DATA;
         consumeCharacter();
@@ -496,7 +516,13 @@ void HTMLParser::handleSelfClosingStartTagState() {
     }
     
     char c = currentChar();
-    if (c == '>') {
+    
+    // Skip whitespace between / and >
+    if (std::isspace(c)) {
+        consumeCharacter();
+        // Stay in SELF_CLOSING_START_TAG state
+        return;
+    } else if (c == '>') {
         m_currentToken.selfClosing = true;
         m_state = ParserState::DATA;
         consumeCharacter();
@@ -775,11 +801,12 @@ void HTMLParser::insertElement(const Token& token) {
     
     // Handle self-closing tags
     if (token.selfClosing || isSelfClosingTag(token.name)) {
-        // Nothing more to do for self-closing tags
+        // For self-closing tags, don't push to open elements stack
+        // and don't update current node
         return;
     }
     
-    // Update current node and open elements
+    // For non-self-closing tags, update current node and open elements
     m_currentNode = element.get();
     m_openElements.push(element);
 }
