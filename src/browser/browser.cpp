@@ -200,7 +200,7 @@ bool Browser::loadAboutPage(const std::string& url, std::string& error) {
     }
     
     // Parse the about page HTML
-       m_domTree = m_htmlParser.parse(html);
+    m_domTree = m_htmlParser.parse(html);
     m_currentUrl = url;
     m_currentOrigin = security::Origin::null();
     
@@ -225,15 +225,18 @@ bool Browser::loadAboutPage(const std::string& url, std::string& error) {
     
     // Print what elements have what styles
     std::cout << "\n=== Applied Styles ===" << std::endl;
-    html::Element* body = m_domTree.document()->getElementsByTagName("body")[0];
-    if (body) {
+    
+    // FIX: Check if getElementsByTagName returns an empty vector
+    std::vector<html::Element*> bodyElements = m_domTree.document()->getElementsByTagName("body");
+    if (!bodyElements.empty()) {
+        html::Element* body = bodyElements[0];
         css::ComputedStyle bodyStyle = m_styleResolver.getComputedStyle(body);
         std::cout << "Body background-color: " << bodyStyle.getProperty("background-color").stringValue() << std::endl;
+    } else {
+        std::cout << "No body element found!" << std::endl;
     }
-    std::cout << "==================\n" << std::endl;
     
-    return true;
-
+    std::cout << "==================\n" << std::endl;
     
     // Execute scripts for interactivity
     if (!loadScripts(url)) {

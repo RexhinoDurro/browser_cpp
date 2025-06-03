@@ -203,6 +203,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         
+        
         // Configure cache
         if (!args.noCache && !args.incognito) {
             std::string cacheDir = args.cacheDir.empty() ? getDefaultCacheDir() : args.cacheDir;
@@ -268,28 +269,28 @@ int main(int argc, char* argv[]) {
             }
         });
         
-        // IMPORTANT: Show the window!
         std::cout << "Showing browser window..." << std::endl;
         g_window->show();
-        
+
         // Load initial URL if specified
         if (!args.initialUrl.empty()) {
             std::cout << "Loading URL: " << args.initialUrl << std::endl;
             g_window->loadUrl(args.initialUrl);
         }
         // Note: showDefaultPage() is already called in BrowserWindow::initialize()
-        
+
         // Give the window time to show
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        
+
         // Run event loop - THIS IS CRITICAL!
         std::cout << "Browser is running. Press Ctrl+C to quit." << std::endl;
         g_window->runEventLoop();
-        
+
         // Cleanup
         std::cout << "Browser closed." << std::endl;
         g_window.reset();
         g_browser.reset();
+
         
         return 0;
         
