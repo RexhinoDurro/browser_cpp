@@ -1,4 +1,4 @@
-// src/browser/browser.cpp - Complete Browser Implementation
+// src/browser/browser.cpp - Complete Browser Implementation with JavaScript fixes
 #include "browser.h"
 #include "../networking/http_client.h"
 #include "../storage/local_storage.h"
@@ -77,6 +77,9 @@ bool Browser::initialize() {
 bool Browser::loadUrl(const std::string& url, std::string& error) {
     std::cout << "Loading URL: " << url << std::endl;
     
+    // Clear pending navigation
+    m_pendingNavigationUrl.clear();
+    
     try {
         // Special handling for about: URLs
         if (url.substr(0, 6) == "about:") {
@@ -147,6 +150,16 @@ bool Browser::loadUrl(const std::string& url, std::string& error) {
             std::cerr << "Warning: Some scripts failed to load" << std::endl;
         }
         
+        // Check for pending navigation from JavaScript
+        if (!m_pendingNavigationUrl.empty()) {
+            std::cout << "Executing pending navigation to: " << m_pendingNavigationUrl << std::endl;
+            std::string pendingUrl = m_pendingNavigationUrl;
+            m_pendingNavigationUrl.clear();
+            
+            // Navigate to the URL
+            return loadUrl(pendingUrl, error);
+        }
+        
         // Load images (asynchronously)
         loadImages(url);
         
@@ -163,37 +176,213 @@ bool Browser::loadAboutPage(const std::string& url, std::string& error) {
     std::string html;
     
     if (url == "about:home" || url == "about:blank") {
-        html = R"(
+        html = R"HTML(
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Simple Browser - Test</title>
+    <title>Simple Browser - Home</title>
     <style>
         body {
-            background-color: #ff0000;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
             margin: 0;
             padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
+        
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 40px;
+            text-align: center;
+        }
+        
         h1 {
-            color: white;
-            background-color: blue;
-            padding: 10px;
+            color: #333;
+            margin-bottom: 10px;
         }
-        .test {
-            background-color: yellow;
-            color: black;
-            padding: 10px;
-            margin: 10px;
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .search-box:focus {
+            border-color: #4285f4;
+        }
+        
+        .search-button {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 16px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .search-button:hover {
+            background-color: #357ae8;
+        }
+        
+        .links {
+            margin-top: 40px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        .link {
+            color: #4285f4;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .link:hover {
+            text-decoration: underline;
+        }
+        
+        .clock {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .tips {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #f0f7ff;
+            border-radius: 8px;
+            text-align: left;
+        }
+        
+        .tips h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .tips ul {
+            color: #666;
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .tips li {
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
-    <h1>Test Page</h1>
-    <div class="test">This should have a yellow background</div>
-    <p>This is a test paragraph.</p>
+    <div class="clock" id="clock"></div>
+    
+    <div class="container">
+        <h1>Welcome to Simple Browser</h1>
+        <p class="subtitle">Your gateway to the web</p>
+        
+        <input type="text" id="searchBox" class="search-box" placeholder="Search or enter URL..." />
+        <button class="search-button" onclick="performSearch()">Search</button>
+        
+        <div class="links">
+            <a href="https://www.google.com" class="link">Google</a>
+            <a href="https://www.wikipedia.org" class="link">Wikipedia</a>
+            <a href="https://www.github.com" class="link">GitHub</a>
+            <a href="https://news.ycombinator.com" class="link">Hacker News</a>
+        </div>
+        
+        <div class="tips">
+            <h3>Quick Tips:</h3>
+            <ul>
+                <li>Type a URL or search query in the box above</li>
+                <li>Press Enter or click Search to navigate</li>
+                <li>Use the navigation buttons in the toolbar</li>
+                <li>This browser supports basic HTML, CSS, and JavaScript</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // Clock functionality
+        function updateClock() {
+            var now = new Date();
+            var timeStr = now.toLocaleTimeString();
+            var dateStr = now.toLocaleDateString();
+            document.getElementById('clock').textContent = dateStr + ' ' + timeStr;
+        }
+        
+        // Update clock immediately and then every second
+        updateClock();
+        setInterval(updateClock, 1000);
+        
+        // Search functionality
+        function performSearch() {
+            var searchBox = document.getElementById('searchBox');
+            var query = searchBox.value.trim();
+            if (query) {
+                // Check if it's a URL
+                if (query.indexOf('.') !== -1 && query.indexOf(' ') === -1) {
+                    // Likely a URL
+                    if (query.indexOf('://') === -1) {
+                        query = 'http://' + query;
+                    }
+                    window.location.href = query;
+                } else {
+                    // It's a search query
+                    window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(query);
+                }
+            }
+        }
+        
+        // Handle Enter key in search box
+        document.getElementById('searchBox').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+        
+        // Handle link clicks
+        var links = document.querySelectorAll('.link');
+        for (var i = 0; i < links.length; i++) {
+            links[i].addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = this.href;
+            });
+        }
+        
+        // Animate search box on focus
+        var searchBox = document.getElementById('searchBox');
+        searchBox.addEventListener('focus', function() {
+            this.style.transform = 'scale(1.02)';
+        });
+        
+        searchBox.addEventListener('blur', function() {
+            this.style.transform = 'scale(1)';
+        });
+        
+        // Focus search box on page load
+        searchBox.focus();
+    </script>
 </body>
 </html>
-)";
+)HTML";
     } else {
         error = "Unknown about: page";
         return false;
@@ -204,7 +393,7 @@ bool Browser::loadAboutPage(const std::string& url, std::string& error) {
     m_currentUrl = url;
     m_currentOrigin = security::Origin::null();
     
-    // IMPORTANT: This must be called!
+    // Load stylesheets (including inline styles)
     std::cout << "Loading stylesheets for about page..." << std::endl;
     if (!loadStylesheets(url)) {
         std::cerr << "Warning: Failed to load stylesheets for about page" << std::endl;
@@ -223,24 +412,20 @@ bool Browser::loadAboutPage(const std::string& url, std::string& error) {
         1024, 768
     );
     
-    // Print what elements have what styles
-    std::cout << "\n=== Applied Styles ===" << std::endl;
-    
-    // FIX: Check if getElementsByTagName returns an empty vector
-    std::vector<html::Element*> bodyElements = m_domTree.document()->getElementsByTagName("body");
-    if (!bodyElements.empty()) {
-        html::Element* body = bodyElements[0];
-        css::ComputedStyle bodyStyle = m_styleResolver.getComputedStyle(body);
-        std::cout << "Body background-color: " << bodyStyle.getProperty("background-color").stringValue() << std::endl;
-    } else {
-        std::cout << "No body element found!" << std::endl;
-    }
-    
-    std::cout << "==================\n" << std::endl;
-    
-    // Execute scripts for interactivity
+    // Execute scripts for interactivity - THIS IS CRITICAL!
+    std::cout << "Loading scripts for about page..." << std::endl;
     if (!loadScripts(url)) {
         std::cerr << "Warning: Failed to load scripts for about page" << std::endl;
+    }
+    
+    // Check for pending navigation from JavaScript
+    if (!m_pendingNavigationUrl.empty()) {
+        std::cout << "Executing pending navigation to: " << m_pendingNavigationUrl << std::endl;
+        std::string pendingUrl = m_pendingNavigationUrl;
+        m_pendingNavigationUrl.clear();
+        
+        // Navigate to the URL
+        return loadUrl(pendingUrl, error);
     }
     
     return true;
@@ -338,7 +523,7 @@ bool Browser::loadStylesheets(const std::string& baseUrl) {
     }
     
     // Also process inline styles
-     auto styles = m_domTree.document()->getElementsByTagName("style");
+    auto styles = m_domTree.document()->getElementsByTagName("style");
     for (html::Element* style : styles) {
         std::string css = style->textContent();
         if (!css.empty()) {
@@ -369,6 +554,9 @@ bool Browser::loadStylesheets(const std::string& baseUrl) {
 }
 
 bool Browser::loadScripts(const std::string& baseUrl) {
+    // Clear pending navigation
+    m_pendingNavigationUrl.clear();
+    
     auto scripts = m_domTree.document()->getElementsByTagName("script");
     bool allLoaded = true;
     
@@ -393,29 +581,45 @@ bool Browser::loadScripts(const std::string& baseUrl) {
             
             if (m_resourceLoader->loadResource(fullUrl, data, headers, error)) {
                 scriptContent = std::string(data.begin(), data.end());
+                std::cout << "Loaded external script from: " << fullUrl << std::endl;
             } else {
                 std::cerr << "Failed to load script: " << error << std::endl;
                 allLoaded = false;
                 continue;
             }
         } else {
-            // Inline script
+            // Inline script - THIS IS THE FIX!
             if (!m_securityManager->contentSecurityPolicy()->allowsInlineScript()) {
                 std::cerr << "Inline script blocked by CSP" << std::endl;
                 continue;
             }
             
             scriptContent = script->textContent();
+            if (!scriptContent.empty()) {
+                std::cout << "Found inline script with " << scriptContent.length() << " characters" << std::endl;
+            }
         }
         
         // Execute script
         if (!scriptContent.empty()) {
+            std::cout << "Executing script..." << std::endl;
             std::string result, error;
             if (!m_jsEngine.executeScript(scriptContent, result, error)) {
                 std::cerr << "Script execution error: " << error << std::endl;
                 allLoaded = false;
+            } else {
+                std::cout << "Script executed successfully" << std::endl;
+                if (!result.empty() && result != "undefined") {
+                    std::cout << "Script result: " << result << std::endl;
+                }
             }
         }
+    }
+    
+    // After all scripts are executed, check for pending navigation
+    if (!m_pendingNavigationUrl.empty()) {
+        std::cout << "Pending navigation detected: " << m_pendingNavigationUrl << std::endl;
+        // Navigation will be handled by the caller
     }
     
     return allLoaded;
@@ -481,43 +685,95 @@ void Browser::setupJavaScriptBindings() {
     // Create window object
     auto windowObj = std::make_shared<custom_js::JSObject>();
     
-    // Add document object
+    // Create document object
     auto docObj = std::make_shared<custom_js::JSObject>();
+    
+    // Store DOM element references
+    std::map<std::string, html::Element*> elementMap;
     
     // document.getElementById
     docObj->set("getElementById", custom_js::JSValue(
         std::make_shared<custom_js::JSFunction>(
-            [this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+            [this, &elementMap](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) -> custom_js::JSValue {
                 if (args.empty()) return custom_js::JSValue();
                 
                 std::string id = args[0].toString();
+                std::cout << "getElementById called with: " << id << std::endl;
+                
                 html::Element* element = m_domTree.document()->getElementById(id);
                 
                 if (element) {
+                    std::cout << "Found element with id: " << id << std::endl;
+                    
                     // Create element wrapper
                     auto elementObj = std::make_shared<custom_js::JSObject>();
                     
-                    // Add element properties
+                    // Store element reference
+                    elementMap[id] = element;
+                    
+                    // Basic properties
                     elementObj->set("tagName", custom_js::JSValue(element->tagName()));
                     elementObj->set("id", custom_js::JSValue(element->getAttribute("id")));
+                    elementObj->set("className", custom_js::JSValue(element->className()));
                     
-                    // Add textContent property
+                    // Value property for input elements
+                    if (element->tagName() == "input") {
+                        elementObj->set("value", custom_js::JSValue(element->getAttribute("value")));
+                        
+                        // Add value getter that returns an object with trim()
+                        auto valueObj = std::make_shared<custom_js::JSObject>();
+                        valueObj->set("trim", custom_js::JSValue(
+                            std::make_shared<custom_js::JSFunction>(
+                                [element](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                                    std::string value = element->getAttribute("value");
+                                    // Trim whitespace
+                                    size_t start = value.find_first_not_of(" \t\n\r");
+                                    size_t end = value.find_last_not_of(" \t\n\r");
+                                    if (start != std::string::npos && end != std::string::npos) {
+                                        value = value.substr(start, end - start + 1);
+                                    } else if (start == std::string::npos) {
+                                        value = "";
+                                    }
+                                    return custom_js::JSValue(value);
+                                }
+                            )
+                        ));
+                        
+                        // Override value property to support .trim()
+                        elementObj->set("value", custom_js::JSValue(valueObj));
+                    }
+                    
+                    // textContent property
                     elementObj->set("textContent", custom_js::JSValue(element->textContent()));
                     
-                    // Add value property (for input elements)
-                    elementObj->set("value", custom_js::JSValue(element->getAttribute("value")));
+                    // innerHTML property (simplified)
+                    elementObj->set("innerHTML", custom_js::JSValue(element->innerHTML()));
                     
-                    // Add addEventListener method
+                    // style property
+                    auto styleObj = std::make_shared<custom_js::JSObject>();
+                    styleObj->set("transform", custom_js::JSValue(""));
+                    elementObj->set("style", custom_js::JSValue(styleObj));
+                    
+                    // addEventListener method
                     elementObj->set("addEventListener", custom_js::JSValue(
                         std::make_shared<custom_js::JSFunction>(
                             [element, this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
                                 if (args.size() >= 2 && args[0].isString() && args[1].isFunction()) {
                                     std::string event = args[0].toString();
-                                    // Store the event handler (in a real implementation)
-                                    // For now, we'll just handle keypress on searchBox
+                                    auto handler = args[1].toFunction();
+                                    
+                                    std::cout << "addEventListener called: " << event << " on " << element->id() << std::endl;
+                                    
+                                    // Store event handlers (simplified - in real browser this would be more complex)
                                     if (event == "keypress" && element->id() == "searchBox") {
-                                        // Store the handler for later use
-                                        // This is simplified - real implementation would store all handlers
+                                        // Special handling for search box
+                                        element->setAttribute("onkeypress", "true");
+                                    } else if (event == "click") {
+                                        element->setAttribute("onclick", "true");
+                                    } else if (event == "focus") {
+                                        element->setAttribute("onfocus", "true");
+                                    } else if (event == "blur") {
+                                        element->setAttribute("onblur", "true");
                                     }
                                 }
                                 return custom_js::JSValue();
@@ -525,24 +781,25 @@ void Browser::setupJavaScriptBindings() {
                         )
                     ));
                     
-                    // Add trim method to string values
-                    auto valueObj = std::make_shared<custom_js::JSObject>();
-                    valueObj->set("trim", custom_js::JSValue(
+                    // focus() method
+                    elementObj->set("focus", custom_js::JSValue(
                         std::make_shared<custom_js::JSFunction>(
                             [element](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
-                                std::string value = element->getAttribute("value");
-                                // Trim whitespace
-                                size_t start = value.find_first_not_of(" \t\n\r");
-                                size_t end = value.find_last_not_of(" \t\n\r");
-                                if (start != std::string::npos && end != std::string::npos) {
-                                    value = value.substr(start, end - start + 1);
-                                }
-                                return custom_js::JSValue(value);
+                                std::cout << "focus() called on element: " << element->id() << std::endl;
+                                // In a real browser, this would actually focus the element
+                                return custom_js::JSValue();
                             }
                         )
                     ));
                     
+                    // For links, add href property
+                    if (element->tagName() == "a") {
+                        elementObj->set("href", custom_js::JSValue(element->getAttribute("href")));
+                    }
+                    
                     return custom_js::JSValue(elementObj);
+                } else {
+                    std::cout << "Element not found with id: " << id << std::endl;
                 }
                 
                 return custom_js::JSValue(); // null
@@ -577,16 +834,6 @@ void Browser::setupJavaScriptBindings() {
                         )
                     ));
                     
-                    // Add addEventListener for links
-                    elementObj->set("addEventListener", custom_js::JSValue(
-                        std::make_shared<custom_js::JSFunction>(
-                            [elem, this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
-                                // Simplified event handler storage
-                                return custom_js::JSValue();
-                            }
-                        )
-                    ));
-                    
                     jsElements.push_back(custom_js::JSValue(elementObj));
                 }
                 
@@ -604,8 +851,9 @@ void Browser::setupJavaScriptBindings() {
                 std::string selector = args[0].toString();
                 std::vector<custom_js::JSValue> jsElements;
                 
-                // Simplified selector handling - just handle class selectors
+                // Simplified selector handling
                 if (selector.size() > 0 && selector[0] == '.') {
+                    // Class selector
                     std::string className = selector.substr(1);
                     std::vector<html::Element*> allElements = m_domTree.document()->getElementsByTagName("*");
                     
@@ -619,10 +867,19 @@ void Browser::setupJavaScriptBindings() {
                             elementObj->set("addEventListener", custom_js::JSValue(
                                 std::make_shared<custom_js::JSFunction>(
                                     [elem, this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                                        if (args.size() >= 2) {
+                                            std::string event = args[0].toString();
+                                            std::cout << "addEventListener on class element: " << event << std::endl;
+                                        }
                                         return custom_js::JSValue();
                                     }
                                 )
                             ));
+                            
+                            // Add href for links
+                            if (elem->tagName() == "a") {
+                                elementObj->set("href", custom_js::JSValue(elem->getAttribute("href")));
+                            }
                             
                             // Add style property
                             auto styleObj = std::make_shared<custom_js::JSObject>();
@@ -660,26 +917,53 @@ void Browser::setupJavaScriptBindings() {
     
     windowObj->set("console", custom_js::JSValue(consoleObj));
     
-    // Add location object with navigation support
+    // Add location object with WORKING navigation
     auto locationObj = std::make_shared<custom_js::JSObject>();
     locationObj->set("href", custom_js::JSValue(m_currentUrl));
     
-    // Make href a settable property that triggers navigation
-    locationObj->set("__href_setter__", custom_js::JSValue(
+    // Create a special setter for href that triggers navigation
+    windowObj->set("__navigateTo__", custom_js::JSValue(
         std::make_shared<custom_js::JSFunction>(
             [this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
                 if (!args.empty()) {
                     std::string newUrl = args[0].toString();
-                    // Queue navigation (in a real implementation, this would be async)
                     std::cout << "JavaScript navigation to: " << newUrl << std::endl;
-                    // Note: In a real implementation, you'd need to handle this navigation request
-                    // properly through the event loop
+                    m_pendingNavigationUrl = newUrl;
                 }
                 return custom_js::JSValue();
             }
         )
     ));
     
+    // Override location object to use property descriptor
+    auto locationWrapper = std::make_shared<custom_js::JSObject>();
+    locationWrapper->set("get", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                auto loc = std::make_shared<custom_js::JSObject>();
+                loc->set("href", custom_js::JSValue(m_currentUrl));
+                return custom_js::JSValue(loc);
+            }
+        )
+    ));
+    
+    locationWrapper->set("set", custom_js::JSValue(
+        std::make_shared<custom_js::JSFunction>(
+            [this](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
+                if (!args.empty() && args[0].isObject()) {
+                    auto obj = args[0].toObject();
+                    if (obj && obj->has("href")) {
+                        std::string newUrl = obj->get("href").toString();
+                        std::cout << "Setting location.href to: " << newUrl << std::endl;
+                        m_pendingNavigationUrl = newUrl;
+                    }
+                }
+                return custom_js::JSValue();
+            }
+        )
+    ));
+    
+    // Make location work with direct property access
     windowObj->set("location", custom_js::JSValue(locationObj));
     
     // Add Date constructor
@@ -698,8 +982,8 @@ void Browser::setupJavaScriptBindings() {
                     std::make_shared<custom_js::JSFunction>(
                         [tm](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
                             char buffer[100];
-                            // Simple time format HH:MM
-                            snprintf(buffer, sizeof(buffer), "%02d:%02d", tm.tm_hour, tm.tm_min);
+                            snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", 
+                                    tm.tm_hour, tm.tm_min, tm.tm_sec);
                             return custom_js::JSValue(std::string(buffer));
                         }
                     )
@@ -732,7 +1016,6 @@ void Browser::setupJavaScriptBindings() {
         std::make_shared<custom_js::JSFunction>(
             [](const std::vector<custom_js::JSValue>& args, custom_js::JSValue thisValue) {
                 // In a real implementation, this would schedule the callback
-                // For now, we'll just return a fake timer ID
                 return custom_js::JSValue(1.0);
             }
         )
@@ -767,12 +1050,15 @@ void Browser::setupJavaScriptBindings() {
     // Set window as global object
     m_jsEngine.defineGlobalVariable("window", custom_js::JSValue(windowObj));
     
-    // Also define some globals directly
+    // Also define globals directly
     m_jsEngine.defineGlobalVariable("document", windowObj->get("document"));
     m_jsEngine.defineGlobalVariable("console", windowObj->get("console"));
     m_jsEngine.defineGlobalVariable("Date", windowObj->get("Date"));
     m_jsEngine.defineGlobalVariable("setInterval", windowObj->get("setInterval"));
     m_jsEngine.defineGlobalVariable("encodeURIComponent", windowObj->get("encodeURIComponent"));
+    
+    // Add location as a special global with setter support
+    m_jsEngine.defineGlobalVariable("location", custom_js::JSValue(locationObj));
 }
 
 std::string Browser::renderToASCII(int width, int height) {

@@ -226,13 +226,14 @@ void BrowserWindow::processEvents() {
 void BrowserWindow::runEventLoop() {
     std::cout << "Entering event loop..." << std::endl;
     
-    // Make sure window is shown first
     if (m_window && m_initialized) {
         m_window->show();
         std::cout << "Window shown" << std::endl;
     }
     
     int frameCount = 0;
+    auto lastRenderTime = std::chrono::steady_clock::now();
+    
     while (m_initialized && m_window) {
         // Process window events
         if (!m_window->processEvents()) {
@@ -240,26 +241,25 @@ void BrowserWindow::runEventLoop() {
             break;
         }
         
-        // Render page if needed
-        if (m_needsRender || frameCount == 0) {
+        // Calculate time since last render
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastRenderTime);
+        
+        // Render at 60 FPS or when needed
+        if (m_needsRender || elapsed.count() >= 16) {
             renderPage();
             m_needsRender = false;
+            lastRenderTime = now;
         }
         
         frameCount++;
         
-        // Debug output every 60 frames (about 1 second)
-        if (frameCount % 60 == 0) {
-            std::cout << "Event loop running... (frame " << frameCount << ")" << std::endl;
-        }
-        
         // Sleep a bit to reduce CPU usage
-        std::this_thread::sleep_for(std::chrono::milliseconds(16)); // ~60 FPS
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     
     std::cout << "Exiting event loop" << std::endl;
 }
-
 // Helper function to render a box recursively
 void renderBox(Canvas* canvas, layout::Box* box, int offsetX, int offsetY) {
     if (!box || box->displayType() == layout::DisplayType::NONE) {
@@ -521,21 +521,27 @@ bool BrowserWindow::loadUrl(const std::string& input) {
         url = url.substr(start, end - start + 1);
     }
     
+    // Handle empty input
+    if (url.empty()) {
+        return false;
+    }
+    
     // Check if it's a URL or a search query
     bool isUrl = false;
     
     // Check for common URL patterns
     if (url.find("://") != std::string::npos) {
         isUrl = true;
+    } else if (url.substr(0, 6) == "about:") {
+        isUrl = true;
     } else if (url.find(".") != std::string::npos) {
         // Check if it looks like a domain
         size_t dotPos = url.find(".");
-        if (dotPos > 0 && dotPos < url.length() - 1) {
-            // Has text before and after the dot
+        size_t spacePos = url.find(" ");
+        if (dotPos > 0 && dotPos < url.length() - 1 && 
+            (spacePos == std::string::npos || dotPos < spacePos)) {
             isUrl = true;
         }
-    } else if (url.substr(0, 6) == "about:") {
-        isUrl = true;
     }
     
     if (!isUrl) {
@@ -553,7 +559,7 @@ bool BrowserWindow::loadUrl(const std::string& input) {
             }
         }
         url = "https://www.google.com/search?q=" + encoded;
-    } else if (url.find("://") == std::string::npos) {
+    } else if (url.find("://") == std::string::npos && url.substr(0, 6) != "about:") {
         // Add http:// if no protocol specified
         url = "http://" + url;
     }
@@ -848,10 +854,11 @@ void BrowserWindow::updateLoadingState(bool isLoading) {
 void BrowserWindow::handleKeyEvent(Key key, KeyAction action) {
     // First, let browser controls handle the event
     if (m_browserControls) {
-        // Convert Key and KeyAction to int for compatibility with Control interface
+        // Pass the Key enum value directly
         if (m_browserControls->handleKeyInput(static_cast<int>(key), 0, 
                                              static_cast<int>(action), 0)) {
-            return; // Event was handled by controls
+            m_needsRender = true;  // Force re-render after input
+            return;
         }
     }
     
@@ -903,10 +910,10 @@ void BrowserWindow::handleKeyEvent(Key key, KeyAction action) {
 void BrowserWindow::handleMouseEvent(MouseButton button, MouseAction action, int x, int y) {
     // First, let browser controls handle the event
     if (m_browserControls) {
-        // Convert MouseButton and MouseAction to int for compatibility
         if (m_browserControls->handleMouseButton(static_cast<int>(button), 
                                                static_cast<int>(action), 0, x, y)) {
-            return; // Event was handled by controls
+            m_needsRender = true;  // Force re-render after click
+            return;
         }
     }
     

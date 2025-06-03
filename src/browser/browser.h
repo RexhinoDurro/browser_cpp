@@ -57,6 +57,7 @@ private:
     // Current document state
     html::DOMTree m_domTree;
     std::string m_currentUrl;
+    std::string m_pendingNavigationUrl;  // Add this
     security::Origin m_currentOrigin{security::Origin::null()};  // Initialize inline
     
     // Load and process resources

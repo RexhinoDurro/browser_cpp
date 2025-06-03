@@ -210,7 +210,7 @@ void Button::draw(rendering::CustomRenderContext* ctx) {
 }
 
 bool Button::handleMouseButton(int button, int action, int mods, int x, int y) {
-    if (m_enabled && button == 0 && action == 1 && m_hover) { // Left button press
+    if (m_enabled && button == 0 && action == 1 && contains(x, y)) { // Left button press
         if (m_clickHandler) {
             m_clickHandler();
         }
@@ -403,18 +403,20 @@ bool TextInput::handleMouseButton(int button, int action, int mods, int x, int y
     if (button == 0) { // Left button
         if (action == 1) { // Press
             if (contains(x, y)) {
+                // First unfocus all other controls (you'll need to add this mechanism)
                 m_focused = true;
                 
-                // Set cursor position based on click position
-                // This would require text measurement to be accurate
-                // For simplicity, we'll just put the cursor at the end
+                // Calculate cursor position based on click
+                // For now, put cursor at end
                 m_cursorPos = m_text.length();
                 m_selectionStart = m_cursorPos;
                 m_selecting = true;
                 
+                std::cout << "TextInput focused at " << x << "," << y << std::endl;
                 return true;
             } else {
                 m_focused = false;
+                return false;
             }
         } else if (action == 0) { // Release
             m_selecting = false;
@@ -427,60 +429,75 @@ bool TextInput::handleMouseButton(int button, int action, int mods, int x, int y
 bool TextInput::handleKeyInput(int key, int scancode, int action, int mods) {
     if (!m_enabled || !m_focused || action != 1) return false; // Only handle key press
     
-    // Handle different keys
-    switch (key) {
-        case 37: // Left arrow
-            moveCursor(-1, (mods & 0x0001) != 0); // Shift key is 0x0001
+    // Convert Key enum to actual values if needed
+    // The Key enum values are being passed, not raw key codes
+    Key keyEnum = static_cast<Key>(key);
+    
+    // Handle special keys first
+    switch (keyEnum) {
+        case Key::Left:
+            moveCursor(-1, (mods & 0x0001) != 0);
             return true;
             
-        case 39: // Right arrow
-            moveCursor(1, (mods & 0x0001) != 0); // Shift key is 0x0001
+        case Key::Right:
+            moveCursor(1, (mods & 0x0001) != 0);
             return true;
             
-        case 36: // Home
+        case Key::Home:
             m_cursorPos = 0;
-            if ((mods & 0x0001) == 0) { // If shift is not pressed
+            if ((mods & 0x0001) == 0) {
                 m_selectionStart = m_cursorPos;
             }
             return true;
             
-        case 35: // End
+        case Key::End:
             m_cursorPos = m_text.length();
-            if ((mods & 0x0001) == 0) { // If shift is not pressed
+            if ((mods & 0x0001) == 0) {
                 m_selectionStart = m_cursorPos;
             }
             return true;
             
-        case 8: // Backspace
+        case Key::Backspace:
             deletePreviousChar();
             return true;
             
-        case 46: // Delete
+        case Key::Delete:
             deleteNextChar();
             return true;
             
-        case 13: // Enter
+        case Key::Enter:
             if (m_submitHandler && !m_text.empty()) {
                 std::cout << "Enter key pressed in TextInput, submitting: " << m_text << std::endl;
                 m_submitHandler(m_text);
             }
             return true;
             
-        case 27: // Escape - clear focus
+        case Key::Escape:
             m_focused = false;
             return true;
             
         default:
-            // Handle printable characters
-            if (key >= 32 && key <= 126) {
-                char c = (char)key;
-                // Handle shift for uppercase letters
-                if (key >= 'A' && key <= 'Z') {
-                    if ((mods & 0x0001) == 0) { // Shift not pressed
-                        c = c + 32; // Convert to lowercase
-                    }
+            // Handle alphanumeric keys
+            if (key >= static_cast<int>(Key::A) && key <= static_cast<int>(Key::Z)) {
+                char c = 'A' + (key - static_cast<int>(Key::A));
+                if ((mods & 0x0001) == 0) { // Shift not pressed
+                    c = c + 32; // Convert to lowercase
                 }
                 insertText(std::string(1, c));
+                return true;
+            }
+            else if (key >= static_cast<int>(Key::Num0) && key <= static_cast<int>(Key::Num9)) {
+                char c = '0' + (key - static_cast<int>(Key::Num0));
+                insertText(std::string(1, c));
+                return true;
+            }
+            else if (keyEnum == Key::Space) {
+                insertText(" ");
+                return true;
+            }
+            // Handle other printable characters
+            else if (key >= 32 && key <= 126) {
+                insertText(std::string(1, static_cast<char>(key)));
                 return true;
             }
     }
