@@ -116,10 +116,11 @@ set(SECURITY_SOURCES
     src/security/certificate_validator.h
 )
 
-set(STORAGE_SOURCES
-    src/storage/local_storage.cpp
-    src/storage/local_storage.h
-)
+# Local storage sources removed - commented out for reference
+# set(STORAGE_SOURCES
+#     src/storage/local_storage.cpp
+#     src/storage/local_storage.h
+# )
 
 # Platform-independent UI sources
 set(UI_SOURCES
@@ -169,7 +170,7 @@ source_group("Layout" FILES ${LAYOUT_SOURCES})
 source_group("Rendering" FILES ${RENDERING_SOURCES})
 source_group("Networking" FILES ${NETWORKING_SOURCES})
 source_group("Security" FILES ${SECURITY_SOURCES})
-source_group("Storage" FILES ${STORAGE_SOURCES})
+# source_group("Storage" FILES ${STORAGE_SOURCES})  # Removed
 source_group("UI" FILES ${UI_SOURCES})
 source_group("Browser" FILES ${BROWSER_SOURCES})
 source_group("Main" FILES ${MAIN_SOURCE})
@@ -183,7 +184,7 @@ add_library(browser_lib STATIC
     ${RENDERING_SOURCES}
     ${NETWORKING_SOURCES}
     ${SECURITY_SOURCES}
-    ${STORAGE_SOURCES}
+    # ${STORAGE_SOURCES}  # Removed local storage sources
     ${UI_SOURCES}
     ${BROWSER_SOURCES}
 )
